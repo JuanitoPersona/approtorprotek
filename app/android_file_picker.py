@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+import threading
 import time
 from typing import Callable
 
@@ -69,6 +70,16 @@ class AndroidCsvPicker:
                 self._dispatch_cancel()
                 return
 
+            threading.Thread(
+                target=self._persist_and_dispatch,
+                args=(uri, intent),
+                daemon=True,
+            ).start()
+        except Exception as exc:
+            self._dispatch_error(f"No se pudo importar el archivo seleccionado: {exc}")
+
+    def _persist_and_dispatch(self, uri, intent) -> None:
+        try:
             local_path, display_name = self._persist_csv_from_uri(uri, intent)
             self._dispatch_success(local_path, display_name)
         except Exception as exc:

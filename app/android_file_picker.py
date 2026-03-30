@@ -133,7 +133,6 @@ class AndroidCsvPicker:
 
     def _copy_uri_to_file(self, resolver, uri, local_path: str) -> None:
         from jnius import autoclass
-        from jnius import jarray
 
         input_stream = resolver.openInputStream(uri)
         if input_stream is None:
@@ -141,13 +140,8 @@ class AndroidCsvPicker:
 
         FileOutputStream = autoclass("java.io.FileOutputStream")
         output_stream = FileOutputStream(local_path)
-        buffer = jarray.zeros(65536, "b")
         try:
-            while True:
-                bytes_read = input_stream.read(buffer)
-                if bytes_read == -1:
-                    break
-                output_stream.write(buffer, 0, bytes_read)
+            input_stream.transferTo(output_stream)
         finally:
             try:
                 input_stream.close()

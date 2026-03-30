@@ -94,7 +94,14 @@ class ViewerScreen(MDScreen):
         self.content.add_widget(self.torque_card)
 
         self.harmonics_card = SectionCard("Armonicos")
-        self.harmonics_chart = MultiSeriesChart(size_hint_y=None, height=dp(180), x_axis_label="Frecuencia [Hz]", y_axis_label="Amplitud")
+        self.harmonics_chart = MultiSeriesChart(
+            size_hint_y=None,
+            height=dp(220),
+            x_axis_label="Frecuencia [Hz]",
+            y_axis_label="% Imax",
+            chart_mode="bar",
+            show_legend=False,
+        )
         self.harmonics_card.body.add_widget(_zoom_controls(self.harmonics_chart))
         self.harmonics_info = MDLabel(text="", adaptive_height=True, theme_text_color="Secondary")
         self.harmonics_card.body.add_widget(self.harmonics_chart)
@@ -211,6 +218,9 @@ class ViewerScreen(MDScreen):
             {"name": "Corriente", "color": "#EC6E00", "points": _points(time_axis, record.series.current)},
             {"name": "Par", "color": "#2E7D32", "points": _points(time_axis, record.series.torque)},
         ]
+        dual_points = _points(time_axis[: len(record.series.dual_current)], record.series.dual_current)
+        if dual_points:
+            self.signal_chart.series.append({"name": "Corriente 2 motor", "color": "#1976D2", "points": dual_points})
 
         load_torque = np.asarray(record.series.load_torque, dtype=float)
         motor_torque = np.asarray(record.series.motor_torque, dtype=float)
@@ -224,14 +234,22 @@ class ViewerScreen(MDScreen):
             {"name": "Congelado", "color": "#1976D2", "points": _points(angle_axis, frozen_curve)},
         ]
 
-        harmonic_points = _points(record.series.harmonic_freq_hz, record.series.harmonic_amp)
+        max_current = _safe_float(record.scalars.get("I m\xE1x (Arms)"))
+        harmonic_amp = np.asarray(record.series.harmonic_amp, dtype=float)
+        if not np.isnan(max_current) and max_current > 0:
+            harmonic_amp = harmonic_amp / max_current * 100.0
+        harmonic_points = [
+            point
+            for point in _points(record.series.harmonic_freq_hz, harmonic_amp)
+            if point[0] > 0 and point[1] > 0
+        ]
         visible = self.app_controller.state.show_harmonics
         self.harmonics_card.opacity = 1 if visible else 0
         self.harmonics_card.disabled = not visible
         self.harmonics_card.height = self.harmonics_card.minimum_height if visible else 0
         self.harmonics_chart.series = [{"name": "Armonicos", "color": "#2E7D32", "points": harmonic_points}] if visible else []
         self.harmonics_info.text = (
-            f"{len(harmonic_points)} armonicos validos detectados."
+            f"{len(harmonic_points)} armonicos validos detectados. Usa gesto de pinza para zoom y arrastre para navegar."
             if visible and harmonic_points
             else ("Este arranque no aporta armonicos validos para representar." if visible else "Armonicos ocultos.")
         )

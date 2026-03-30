@@ -46,7 +46,7 @@ class ConditionMonitoringScreen(MDScreen):
         self.content.add_widget(self.selector_card)
 
         self.main_chart_card = SectionCard("Serie principal")
-        self.main_chart = MultiSeriesChart(size_hint_y=None, height=dp(220), x_axis_label="Arranque", y_axis_label="Valor")
+        self.main_chart = MultiSeriesChart(size_hint_y=None, height=dp(220), x_axis_label="Arranque", y_axis_label="Valor", show_points=True)
         self.main_chart_card.body.add_widget(_zoom_controls(self.main_chart))
         self.main_warning = MDLabel(text="", adaptive_height=True, theme_text_color="Secondary")
         self.main_chart_card.body.add_widget(self.main_chart)
@@ -54,7 +54,7 @@ class ConditionMonitoringScreen(MDScreen):
         self.content.add_widget(self.main_chart_card)
 
         self.secondary_chart_card = SectionCard("Serie secundaria")
-        self.secondary_chart = MultiSeriesChart(size_hint_y=None, height=dp(220), x_axis_label="Arranque", y_axis_label="Valor")
+        self.secondary_chart = MultiSeriesChart(size_hint_y=None, height=dp(220), x_axis_label="Arranque", y_axis_label="Valor", show_points=True)
         self.secondary_chart_card.body.add_widget(_zoom_controls(self.secondary_chart))
         self.secondary_warning = MDLabel(text="", adaptive_height=True, theme_text_color="Secondary")
         self.secondary_chart_card.body.add_widget(self.secondary_chart)

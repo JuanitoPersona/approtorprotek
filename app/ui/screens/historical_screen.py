@@ -29,7 +29,13 @@ class HistoricalScreen(MDScreen):
         self.add_widget(root)
 
         self.load_card = SectionCard("Evolucion historica del % de carga")
-        self.load_chart = MultiSeriesChart(size_hint_y=None, height=dp(230), x_axis_label="Arranque", y_axis_label="% de carga")
+        self.load_chart = MultiSeriesChart(
+            size_hint_y=None,
+            height=dp(230),
+            x_axis_label="Arranque",
+            y_axis_label="% de carga",
+            show_points=True,
+        )
         self.load_card.body.add_widget(_zoom_controls(self.load_chart))
         self.load_info = MDLabel(adaptive_height=True, theme_text_color="Secondary")
         self.load_card.body.add_widget(self.load_chart)
@@ -84,7 +90,10 @@ class HistoricalScreen(MDScreen):
             {"label": "Exitosos", "value": payload["success_count"], "color": "#2E7D32"},
             {"label": "Fallidos", "value": payload["failure_count"], "color": "#C62828"},
         ]
-        self.success_info.text = f"Verde = exitosos ({payload['success_count']}) | Rojo = fallidos ({payload['failure_count']})"
+        self.success_info.text = (
+            f"Exitosos: {payload['success_count']} ({payload['success_ratios']['Exitosos']:.0f}%) | "
+            f"Fallidos: {payload['failure_count']} ({payload['success_ratios']['Fallidos']:.0f}%)"
+        )
 
         self.cascade_chart.segments = [
             {"label": "< 60", "value": payload["cascade_counts"]["< 60"], "color": "#2E7D32"},
@@ -92,14 +101,26 @@ class HistoricalScreen(MDScreen):
             {"label": "70 - 80", "value": payload["cascade_counts"]["70 - 80"], "color": "#EF6C00"},
             {"label": "> 80", "value": payload["cascade_counts"]["> 80"], "color": "#C62828"},
         ]
-        self.cascade_info.text = f"Clasificacion calculada desde Angulo (deg). Omitidos: {payload['omitted_cascade']}."
+        self.cascade_info.text = (
+            "Clasificacion calculada desde Angulo (deg). "
+            f"< 60: {payload['cascade_ratios']['< 60']:.0f}% | "
+            f"60 - 70: {payload['cascade_ratios']['60 - 70']:.0f}% | "
+            f"70 - 80: {payload['cascade_ratios']['70 - 80']:.0f}% | "
+            f"> 80: {payload['cascade_ratios']['> 80']:.0f}%. "
+            f"Omitidos: {payload['omitted_cascade']}."
+        )
 
         self.current_chart.segments = [
             {"label": "90 - 120", "value": payload["current_counts"]["90 - 120"], "color": "#2E7D32"},
             {"label": "80 - 90 / 120 - 130", "value": payload["current_counts"]["80 - 90 / 120 - 130"], "color": "#EF6C00"},
             {"label": "< 80 / > 130", "value": payload["current_counts"]["< 80 / > 130"], "color": "#C62828"},
         ]
-        self.current_info.text = f"El calculo usa el maximo de la serie current de cada arranque. Omitidos: {payload['omitted_current']}."
+        self.current_info.text = (
+            f"90 - 120: {payload['current_ratios']['90 - 120']:.0f}% | "
+            f"80 - 90 / 120 - 130: {payload['current_ratios']['80 - 90 / 120 - 130']:.0f}% | "
+            f"< 80 / > 130: {payload['current_ratios']['< 80 / > 130']:.0f}%. "
+            f"Omitidos: {payload['omitted_current']}."
+        )
 
 
 def _zoom_controls(chart):

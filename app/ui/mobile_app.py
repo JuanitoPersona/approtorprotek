@@ -30,6 +30,7 @@ class RotorProtekMobileApp(MDApp):
         self.state = MobileAppState()
         self.android_picker = None
         self._loading_csv = False
+        self._last_progress_percent = -1
 
         self.file_manager = MDFileManager(exit_manager=self.close_file_manager, select_path=self._select_file_from_desktop, preview=False)
         if is_android_runtime():
@@ -111,7 +112,9 @@ class RotorProtekMobileApp(MDApp):
             return
 
         self._loading_csv = True
+        self._last_progress_percent = -1
         self.state.current_file_label = candidate_name
+        self.state.load_progress = 0
         self.state.validation_messages = [f"Cargando {candidate_name}..."]
         self.refresh_ui()
         self.show_screen("import")
@@ -122,11 +125,29 @@ class RotorProtekMobileApp(MDApp):
         ).start()
 
     def _load_csv_worker(self, path: str, candidate_name: str):
-        ok, message = self.state.load_csv(path, display_name=candidate_name)
+        ok, message = self.state.load_csv(
+            path,
+            display_name=candidate_name,
+            progress_callback=self._report_csv_progress,
+        )
         Clock.schedule_once(lambda *_: self._finish_csv_load(ok, message), 0)
+
+    def _report_csv_progress(self, percent: int, message: str):
+        if percent == self._last_progress_percent and message in self.state.validation_messages:
+            return
+        self._last_progress_percent = percent
+        Clock.schedule_once(lambda *_: self._apply_csv_progress(percent, message), 0)
+
+    def _apply_csv_progress(self, percent: int, message: str):
+        if not self._loading_csv:
+            return
+        self.state.load_progress = percent
+        self.state.validation_messages = [f"{message} ({percent}%)"]
+        self.refresh_ui()
 
     def _finish_csv_load(self, ok: bool, message: str):
         self._loading_csv = False
+        self._last_progress_percent = -1
         extra_messages = [msg for msg in self.state.validation_messages if msg != message and not str(msg).startswith("Cargando ")]
         self.state.validation_messages = [message] + extra_messages
         self.refresh_ui()

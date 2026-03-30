@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import os
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 import numpy as np
 
@@ -31,6 +31,7 @@ class MobileAppState:
     show_harmonics: bool = True
     validation_messages: List[str] = field(default_factory=list)
     last_load_ok: bool = False
+    load_progress: int = 0
 
     @property
     def has_dataset(self) -> bool:
@@ -44,12 +45,19 @@ class MobileAppState:
     def records(self) -> List[StartupRecord]:
         return list(self.dataset.records) if self.dataset else []
 
-    def load_csv(self, file_path: str, display_name: str | None = None) -> tuple[bool, str]:
+    def load_csv(
+        self,
+        file_path: str,
+        display_name: str | None = None,
+        progress_callback: Callable[[int, str], None] | None = None,
+    ) -> tuple[bool, str]:
         self.current_file = file_path
         self.current_file_label = display_name or os.path.basename(file_path)
         self.selected_start_index = 0
         self.show_harmonics = True
         self.last_load_ok = False
+        self.load_progress = 0
+        self._report_progress(progress_callback, 1, "Validando archivo...")
         if not os.path.exists(file_path):
             self.dataset = None
             self.validation_messages = ["El archivo seleccionado ya no existe o no se puede abrir."]
@@ -73,7 +81,14 @@ class MobileAppState:
             return False, self.validation_messages[0]
 
         try:
-            dataset = parse_csv_dataset(read_csv_rows(file_path))
+            rows = read_csv_rows(
+                file_path,
+                progress_callback=lambda ratio, text: self._report_progress(
+                    progress_callback, int(min(90, max(1, round(ratio * 100)))), text
+                ),
+            )
+            self._report_progress(progress_callback, 94, "Interpretando estructura de arranques...")
+            dataset = parse_csv_dataset(rows)
         except Exception as exc:
             self.dataset = None
             self.validation_messages = [f"No se pudo leer el CSV: {exc}"]
@@ -85,8 +100,16 @@ class MobileAppState:
             return False, dataset.validation_issues[0] if dataset.validation_issues else "No se detectaron arranques validos."
 
         self.last_load_ok = True
+        self.load_progress = 100
+        self._report_progress(progress_callback, 100, "CSV cargado correctamente.")
         mode_label = "multiarranque" if len(dataset.records) > 1 else "arranque unico"
         return True, f"CSV cargado: {len(dataset.records)} arranque(s), modo {mode_label}."
+
+    def _report_progress(self, callback: Callable[[int, str], None] | None, percent: int, text: str):
+        percent = max(0, min(100, int(percent)))
+        self.load_progress = percent
+        if callback is not None:
+            callback(percent, text)
 
     def current_record(self) -> Optional[StartupRecord]:
         if not self.records:
@@ -173,7 +196,7 @@ class MobileAppState:
             if np.isnan(numeric):
                 omitted += 1
                 continue
-            points.append((float(index), numeric))
+            points.append((float(index + 1), numeric))
         return points, omitted
 
     def historical_payload(self) -> dict:
@@ -190,10 +213,13 @@ class MobileAppState:
             if np.isnan(numeric):
                 omitted_load += 1
                 continue
-            load_points.append((float(index), numeric))
+            load_points.append((float(index + 1), numeric))
 
         success_count = sum(1 for flag in metrics["success_flags"] if flag)
         failure_count = sum(1 for flag in metrics["success_flags"] if not flag)
+        success_ratios = self._counts_with_percentages(
+            {"Exitosos": success_count, "Fallidos": failure_count}
+        )
 
         cascade_counts = {"< 60": 0, "60 - 70": 0, "70 - 80": 0, "> 80": 0}
         omitted_cascade = 0
@@ -230,8 +256,11 @@ class MobileAppState:
             "load_points": load_points,
             "success_count": success_count,
             "failure_count": failure_count,
+            "success_ratios": success_ratios,
             "cascade_counts": cascade_counts,
+            "cascade_ratios": self._counts_with_percentages(cascade_counts),
             "current_counts": current_counts,
+            "current_ratios": self._counts_with_percentages(current_counts),
             "omitted_load": omitted_load,
             "omitted_cascade": omitted_cascade,
             "omitted_current": omitted_current,
@@ -240,6 +269,10 @@ class MobileAppState:
             "current_analysis_pairs": successful_current_analysis_pairs(legacy_records, nominal_current),
             "speed_ratio_pairs": successful_speed_resistance_ratio_pairs(legacy_records, 1000.0),
         }
+
+    def _counts_with_percentages(self, values: dict[str, int]) -> dict[str, float]:
+        total = max(1, sum(max(0, int(value)) for value in values.values()))
+        return {key: (100.0 * max(0, int(value)) / total) for key, value in values.items()}
 
 
 def _safe_float(value) -> float:

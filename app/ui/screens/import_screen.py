@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 
 from kivy.metrics import dp
+from kivy.uix.progressbar import ProgressBar
 from kivy.uix.scrollview import ScrollView
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDRaisedButton
@@ -54,7 +55,11 @@ class ImportScreen(MDScreen):
 
         self.validation_card = SectionCard("Validacion")
         self.validation_label = MDLabel(text="Selecciona un CSV para comenzar.", adaptive_height=True)
+        self.progress_label = MDLabel(text="", adaptive_height=True, theme_text_color="Secondary")
+        self.progress_bar = ProgressBar(max=100, value=0, size_hint_y=None, height=dp(12))
         self.validation_card.body.add_widget(self.validation_label)
+        self.validation_card.body.add_widget(self.progress_label)
+        self.validation_card.body.add_widget(self.progress_bar)
         self.body.add_widget(self.validation_card)
 
     def refresh(self):
@@ -78,3 +83,9 @@ class ImportScreen(MDScreen):
             self.validation_label.text = "CSV valido y listo para usar."
         else:
             self.validation_label.text = "Selecciona un CSV para comenzar."
+
+        loading = getattr(self.app_controller, "_loading_csv", False)
+        self.progress_bar.opacity = 1 if loading else 0
+        self.progress_label.opacity = 1 if loading else 0
+        self.progress_bar.value = state.load_progress if loading else 0
+        self.progress_label.text = f"Carga en progreso: {state.load_progress}%" if loading else ""

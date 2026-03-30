@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import csv
 import math
+import os
 from datetime import datetime
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -21,32 +22,56 @@ from .models import (
 from .startup_detection import detect_csv_type, extract_multi_start_rows, format_datetime, normalize_header
 
 
-def read_csv_rows(file_path: str) -> List[List[str]]:
-    raw_bytes = _read_csv_bytes(file_path)
+ProgressCallback = Callable[[float, str], None]
+
+
+def read_csv_rows(file_path: str, progress_callback: ProgressCallback | None = None) -> List[List[str]]:
+    raw_bytes = _read_csv_bytes(file_path, progress_callback=progress_callback)
     last_rows: List[List[str]] = []
     for encoding_name in ("utf-8-sig", "utf-8", "cp1252", "latin-1"):
         try:
             text = raw_bytes.decode(encoding_name)
         except UnicodeDecodeError:
             continue
-        rows = _parse_csv_text(text)
+        if progress_callback:
+            progress_callback(0.62, f"Decodificando CSV ({encoding_name})...")
+        rows = _parse_csv_text(text, progress_callback=progress_callback)
         if rows:
             return rows
         last_rows = rows
 
     text = raw_bytes.decode("utf-8", errors="replace")
-    return _parse_csv_text(text) or last_rows
+    return _parse_csv_text(text, progress_callback=progress_callback) or last_rows
 
 
-def _read_csv_bytes(file_path: str) -> bytes:
+def _read_csv_bytes(file_path: str, progress_callback: ProgressCallback | None = None) -> bytes:
+    total_size = max(1, math.ceil(float(max(1, os.path.getsize(file_path)))))
+    chunk_size = 1024 * 1024
+    parts: list[bytes] = []
+    read_bytes = 0
     with open(file_path, "rb") as csv_file:
-        return csv_file.read().replace(b"\x00", b"")
+        while True:
+            chunk = csv_file.read(chunk_size)
+            if not chunk:
+                break
+            parts.append(chunk)
+            read_bytes += len(chunk)
+            if progress_callback:
+                progress_callback(min(0.55, 0.55 * (read_bytes / total_size)), "Leyendo archivo CSV...")
+    return b"".join(parts).replace(b"\x00", b"")
 
 
-def _parse_csv_text(text: str) -> List[List[str]]:
+def _parse_csv_text(text: str, progress_callback: ProgressCallback | None = None) -> List[List[str]]:
     lines = text.splitlines()
     try:
-        return [row for row in csv.reader(lines)]
+        rows: List[List[str]] = []
+        total_lines = max(1, len(lines))
+        for index, row in enumerate(csv.reader(lines), start=1):
+            rows.append(row)
+            if progress_callback and (index == 1 or index % 250 == 0 or index == total_lines):
+                progress = 0.62 + 0.28 * (index / total_lines)
+                progress_callback(min(0.90, progress), f"Parseando filas del CSV ({index}/{total_lines})...")
+        return rows
     except csv.Error:
         return []
 

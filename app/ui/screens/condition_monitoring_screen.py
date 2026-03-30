@@ -3,7 +3,7 @@ from __future__ import annotations
 from kivy.metrics import dp
 from kivy.uix.scrollview import ScrollView
 from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.button import MDRaisedButton
+from kivymd.uix.button import MDFlatButton, MDRaisedButton
 from kivymd.uix.label import MDLabel
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.screen import MDScreen
@@ -46,14 +46,16 @@ class ConditionMonitoringScreen(MDScreen):
         self.content.add_widget(self.selector_card)
 
         self.main_chart_card = SectionCard("Serie principal")
-        self.main_chart = MultiSeriesChart(size_hint_y=None, height=dp(220))
+        self.main_chart = MultiSeriesChart(size_hint_y=None, height=dp(220), x_axis_label="Arranque", y_axis_label="Valor")
+        self.main_chart_card.body.add_widget(_zoom_controls(self.main_chart))
         self.main_warning = MDLabel(text="", adaptive_height=True, theme_text_color="Secondary")
         self.main_chart_card.body.add_widget(self.main_chart)
         self.main_chart_card.body.add_widget(self.main_warning)
         self.content.add_widget(self.main_chart_card)
 
         self.secondary_chart_card = SectionCard("Serie secundaria")
-        self.secondary_chart = MultiSeriesChart(size_hint_y=None, height=dp(220))
+        self.secondary_chart = MultiSeriesChart(size_hint_y=None, height=dp(220), x_axis_label="Arranque", y_axis_label="Valor")
+        self.secondary_chart_card.body.add_widget(_zoom_controls(self.secondary_chart))
         self.secondary_warning = MDLabel(text="", adaptive_height=True, theme_text_color="Secondary")
         self.secondary_chart_card.body.add_widget(self.secondary_chart)
         self.secondary_chart_card.body.add_widget(self.secondary_warning)
@@ -107,6 +109,8 @@ class ConditionMonitoringScreen(MDScreen):
 
         self.main_metric_button.text = state.cm_main_metric
         self.secondary_metric_button.text = state.cm_secondary_metric
+        self.main_chart.y_axis_label = state.cm_main_metric
+        self.secondary_chart.y_axis_label = state.cm_secondary_metric
         main_points, omitted_main = state.condition_monitoring_series(state.cm_main_metric)
         secondary_points, omitted_secondary = state.condition_monitoring_series(state.cm_secondary_metric)
         self.main_chart.series = [{"name": state.cm_main_metric, "color": "#EC6E00", "points": main_points}]
@@ -121,3 +125,11 @@ class ConditionMonitoringScreen(MDScreen):
             if omitted_secondary
             else "Todos los arranques visibles aportan dato valido."
         )
+
+
+def _zoom_controls(chart):
+    row = MDBoxLayout(orientation="horizontal", adaptive_height=True, spacing=dp(8))
+    row.add_widget(MDFlatButton(text="Zoom -", on_release=lambda *_: chart.zoom_out()))
+    row.add_widget(MDFlatButton(text="Reset", on_release=lambda *_: chart.reset_zoom()))
+    row.add_widget(MDFlatButton(text="Zoom +", on_release=lambda *_: chart.zoom_in()))
+    return row

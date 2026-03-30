@@ -4,6 +4,7 @@ from kivy.metrics import dp
 from kivy.uix.scrollview import ScrollView
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.gridlayout import MDGridLayout
+from kivymd.uix.button import MDFlatButton
 from kivymd.uix.label import MDLabel
 from kivymd.uix.screen import MDScreen
 
@@ -28,7 +29,8 @@ class HistoricalScreen(MDScreen):
         self.add_widget(root)
 
         self.load_card = SectionCard("Evolucion historica del % de carga")
-        self.load_chart = MultiSeriesChart(size_hint_y=None, height=dp(230))
+        self.load_chart = MultiSeriesChart(size_hint_y=None, height=dp(230), x_axis_label="Arranque", y_axis_label="% de carga")
+        self.load_card.body.add_widget(_zoom_controls(self.load_chart))
         self.load_info = MDLabel(adaptive_height=True, theme_text_color="Secondary")
         self.load_card.body.add_widget(self.load_chart)
         self.load_card.body.add_widget(MDLabel(text="Eje X: orden temporal de arranques | Eje Y: % de carga", adaptive_height=True, theme_text_color="Secondary"))
@@ -98,3 +100,11 @@ class HistoricalScreen(MDScreen):
             {"label": "< 80 / > 130", "value": payload["current_counts"]["< 80 / > 130"], "color": "#C62828"},
         ]
         self.current_info.text = f"El calculo usa el maximo de la serie current de cada arranque. Omitidos: {payload['omitted_current']}."
+
+
+def _zoom_controls(chart):
+    row = MDBoxLayout(orientation="horizontal", adaptive_height=True, spacing=dp(8))
+    row.add_widget(MDFlatButton(text="Zoom -", on_release=lambda *_: chart.zoom_out()))
+    row.add_widget(MDFlatButton(text="Reset", on_release=lambda *_: chart.reset_zoom()))
+    row.add_widget(MDFlatButton(text="Zoom +", on_release=lambda *_: chart.zoom_in()))
+    return row

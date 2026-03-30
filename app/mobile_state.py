@@ -28,6 +28,7 @@ class MobileAppState:
     selected_start_index: int = 0
     cm_main_metric: str = "Duración (s)"
     cm_secondary_metric: str = "I máx (Arms)"
+    show_harmonics: bool = True
     validation_messages: List[str] = field(default_factory=list)
     last_load_ok: bool = False
 
@@ -47,6 +48,7 @@ class MobileAppState:
         self.current_file = file_path
         self.current_file_label = display_name or os.path.basename(file_path)
         self.selected_start_index = 0
+        self.show_harmonics = True
         self.last_load_ok = False
         if not os.path.exists(file_path):
             self.dataset = None

@@ -4,7 +4,7 @@ import numpy as np
 from kivy.metrics import dp
 from kivy.uix.scrollview import ScrollView
 from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.button import MDRaisedButton
+from kivymd.uix.button import MDFlatButton, MDRaisedButton
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.label import MDLabel
 from kivymd.uix.menu import MDDropdownMenu
@@ -45,8 +45,10 @@ class ViewerScreen(MDScreen):
 
         self.selector_card = SectionCard("Arranque activo")
         self.selector_button = MDRaisedButton(text="Seleccionar arranque", on_release=self._open_start_menu)
+        self.harmonics_toggle_button = MDFlatButton(text="Ocultar armonicos", on_release=self._toggle_harmonics)
         self.selector_hint = MDLabel(text="", adaptive_height=True, theme_text_color="Secondary")
         self.selector_card.body.add_widget(self.selector_button)
+        self.selector_card.body.add_widget(self.harmonics_toggle_button)
         self.selector_card.body.add_widget(self.selector_hint)
         self.content.add_widget(self.selector_card)
 
@@ -66,7 +68,8 @@ class ViewerScreen(MDScreen):
         self.content.add_widget(self.detail_card)
 
         self.signals_card = SectionCard("Senales principales")
-        self.signal_chart = MultiSeriesChart(size_hint_y=None, height=dp(240))
+        self.signal_chart = MultiSeriesChart(size_hint_y=None, height=dp(240), x_axis_label="Tiempo [s]", y_axis_label="% nominal")
+        self.signals_card.body.add_widget(_zoom_controls(self.signal_chart))
         self.signals_card.body.add_widget(self.signal_chart)
         self.signals_card.body.add_widget(
             MDLabel(
@@ -78,7 +81,8 @@ class ViewerScreen(MDScreen):
         self.content.add_widget(self.signals_card)
 
         self.torque_card = SectionCard("Par y carga")
-        self.torque_chart = MultiSeriesChart(size_hint_y=None, height=dp(220))
+        self.torque_chart = MultiSeriesChart(size_hint_y=None, height=dp(220), x_axis_label="Angulo [deg]", y_axis_label="% nominal")
+        self.torque_card.body.add_widget(_zoom_controls(self.torque_chart))
         self.torque_card.body.add_widget(self.torque_chart)
         self.torque_card.body.add_widget(
             MDLabel(
@@ -90,7 +94,8 @@ class ViewerScreen(MDScreen):
         self.content.add_widget(self.torque_card)
 
         self.harmonics_card = SectionCard("Armonicos")
-        self.harmonics_chart = MultiSeriesChart(size_hint_y=None, height=dp(180))
+        self.harmonics_chart = MultiSeriesChart(size_hint_y=None, height=dp(180), x_axis_label="Frecuencia [Hz]", y_axis_label="Amplitud")
+        self.harmonics_card.body.add_widget(_zoom_controls(self.harmonics_chart))
         self.harmonics_info = MDLabel(text="", adaptive_height=True, theme_text_color="Secondary")
         self.harmonics_card.body.add_widget(self.harmonics_chart)
         self.harmonics_card.body.add_widget(self.harmonics_info)
@@ -118,6 +123,10 @@ class ViewerScreen(MDScreen):
         if self.start_menu:
             self.start_menu.dismiss()
         self.app_controller.refresh_ui()
+
+    def _toggle_harmonics(self, *_args):
+        self.app_controller.state.show_harmonics = not self.app_controller.state.show_harmonics
+        self.refresh()
 
     def refresh(self):
         state = self.app_controller.state
@@ -168,6 +177,7 @@ class ViewerScreen(MDScreen):
             self.selector_hint.text = ""
             return
         self.selector_button.text = labels[index]
+        self.harmonics_toggle_button.text = "Mostrar armonicos" if not self.app_controller.state.show_harmonics else "Ocultar armonicos"
         self.selector_hint.text = (
             "Selecciona el arranque activo que quieres inspeccionar en detalle."
             if multi
@@ -215,11 +225,15 @@ class ViewerScreen(MDScreen):
         ]
 
         harmonic_points = _points(record.series.harmonic_freq_hz, record.series.harmonic_amp)
-        self.harmonics_chart.series = [{"name": "Armonicos", "color": "#2E7D32", "points": harmonic_points}]
+        visible = self.app_controller.state.show_harmonics
+        self.harmonics_card.opacity = 1 if visible else 0
+        self.harmonics_card.disabled = not visible
+        self.harmonics_card.height = self.harmonics_card.minimum_height if visible else 0
+        self.harmonics_chart.series = [{"name": "Armonicos", "color": "#2E7D32", "points": harmonic_points}] if visible else []
         self.harmonics_info.text = (
             f"{len(harmonic_points)} armonicos validos detectados."
-            if harmonic_points
-            else "Este arranque no aporta armonicos validos para representar."
+            if visible and harmonic_points
+            else ("Este arranque no aporta armonicos validos para representar." if visible else "Armonicos ocultos.")
         )
 
 
@@ -237,3 +251,11 @@ def _safe_float(value):
         return float(value)
     except Exception:
         return np.nan
+
+
+def _zoom_controls(chart):
+    row = MDBoxLayout(orientation="horizontal", adaptive_height=True, spacing=dp(8))
+    row.add_widget(MDFlatButton(text="Zoom -", on_release=lambda *_: chart.zoom_out()))
+    row.add_widget(MDFlatButton(text="Reset", on_release=lambda *_: chart.reset_zoom()))
+    row.add_widget(MDFlatButton(text="Zoom +", on_release=lambda *_: chart.zoom_in()))
+    return row

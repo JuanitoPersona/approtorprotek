@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import os
 from typing import List, Optional
 
 import numpy as np
@@ -15,6 +16,8 @@ from .historical import (
 )
 from .metrics import scalar_value
 from .models import StartupDataset, StartupRecord
+
+MAX_CSV_SIZE_BYTES = 64 * 1024 * 1024
 
 
 @dataclass
@@ -43,6 +46,28 @@ class MobileAppState:
         self.current_file = file_path
         self.selected_start_index = 0
         self.last_load_ok = False
+        if not os.path.exists(file_path):
+            self.dataset = None
+            self.validation_messages = ["El archivo seleccionado ya no existe o no se puede abrir."]
+            return False, self.validation_messages[0]
+
+        try:
+            file_size = os.path.getsize(file_path)
+        except OSError:
+            file_size = -1
+
+        if file_size == 0:
+            self.dataset = None
+            self.validation_messages = ["El archivo CSV esta vacio."]
+            return False, self.validation_messages[0]
+
+        if file_size > MAX_CSV_SIZE_BYTES:
+            self.dataset = None
+            self.validation_messages = [
+                "El archivo CSV es demasiado grande para abrirlo con seguridad en el movil."
+            ]
+            return False, self.validation_messages[0]
+
         try:
             dataset = parse_csv_dataset(read_csv_rows(file_path))
         except Exception as exc:

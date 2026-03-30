@@ -22,6 +22,7 @@ android.api = 34
 android.minapi = 26
 android.ndk = 25b
 android.archs = arm64-v8a,armeabi-v7a
+android.private_storage = True
 android.accept_sdk_license = True
 android.enable_androidx = True
 android.entrypoint = org.kivy.android.PythonActivity

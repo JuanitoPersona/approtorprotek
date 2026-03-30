@@ -23,6 +23,7 @@ MAX_CSV_SIZE_BYTES = 64 * 1024 * 1024
 @dataclass
 class MobileAppState:
     current_file: str = ""
+    current_file_label: str = ""
     dataset: Optional[StartupDataset] = None
     selected_start_index: int = 0
     cm_main_metric: str = "Duración (s)"
@@ -42,8 +43,9 @@ class MobileAppState:
     def records(self) -> List[StartupRecord]:
         return list(self.dataset.records) if self.dataset else []
 
-    def load_csv(self, file_path: str) -> tuple[bool, str]:
+    def load_csv(self, file_path: str, display_name: str | None = None) -> tuple[bool, str]:
         self.current_file = file_path
+        self.current_file_label = display_name or os.path.basename(file_path)
         self.selected_start_index = 0
         self.last_load_ok = False
         if not os.path.exists(file_path):

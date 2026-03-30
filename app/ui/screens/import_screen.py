@@ -59,7 +59,7 @@ class ImportScreen(MDScreen):
 
     def refresh(self):
         state = self.app_controller.state
-        self.file_name_label.text = os.path.basename(state.current_file) if state.current_file else "Ningun archivo cargado"
+        self.file_name_label.text = state.current_file_label if state.current_file_label else "Ningun archivo cargado"
 
         self.summary_grid.clear_widgets()
         self.summary_grid.add_widget(MetricCard("Estado", "Listo" if state.last_load_ok else "Pendiente"))

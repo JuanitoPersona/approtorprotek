@@ -22,8 +22,33 @@ from .startup_detection import detect_csv_type, extract_multi_start_rows, format
 
 
 def read_csv_rows(file_path: str) -> List[List[str]]:
-    with open(file_path, newline="", encoding="utf-8", errors="replace") as csv_file:
-        return [row for row in csv.reader(csv_file)]
+    raw_bytes = _read_csv_bytes(file_path)
+    last_rows: List[List[str]] = []
+    for encoding_name in ("utf-8-sig", "utf-8", "cp1252", "latin-1"):
+        try:
+            text = raw_bytes.decode(encoding_name)
+        except UnicodeDecodeError:
+            continue
+        rows = _parse_csv_text(text)
+        if rows:
+            return rows
+        last_rows = rows
+
+    text = raw_bytes.decode("utf-8", errors="replace")
+    return _parse_csv_text(text) or last_rows
+
+
+def _read_csv_bytes(file_path: str) -> bytes:
+    with open(file_path, "rb") as csv_file:
+        return csv_file.read().replace(b"\x00", b"")
+
+
+def _parse_csv_text(text: str) -> List[List[str]]:
+    lines = text.splitlines()
+    try:
+        return [row for row in csv.reader(lines)]
+    except csv.Error:
+        return []
 
 
 def parse_numeric(value, factor: float = 1.0, default: float = 0.0) -> float:

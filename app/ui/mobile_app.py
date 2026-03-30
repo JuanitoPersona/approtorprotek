@@ -102,7 +102,7 @@ class RotorProtekMobileApp(MDApp):
             self.show_screen("import")
             return
 
-        ok, message = self.state.load_csv(path)
+        ok, message = self.state.load_csv(path, display_name=candidate_name)
         extra_messages = [msg for msg in self.state.validation_messages if msg != message]
         self.state.validation_messages = [message] + extra_messages
         self.refresh_ui()
@@ -126,7 +126,7 @@ class RotorProtekMobileApp(MDApp):
         self.screen_manager.current = name
 
     def refresh_ui(self):
-        self.file_label.text = os.path.basename(self.state.current_file) if self.state.current_file else "Sin CSV cargado"
+        self.file_label.text = self.state.current_file_label if self.state.current_file_label else "Sin CSV cargado"
         self._set_nav_visibility(self.viewer_button, self.state.has_dataset)
         self._set_nav_visibility(self.cm_button, self.state.is_multi)
         self._set_nav_visibility(self.history_button, self.state.is_multi)

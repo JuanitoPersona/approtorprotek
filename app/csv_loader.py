@@ -26,6 +26,10 @@ ProgressCallback = Callable[[float, str], None]
 
 
 def read_csv_rows(file_path: str, progress_callback: ProgressCallback | None = None) -> List[List[str]]:
+    extension = os.path.splitext(file_path)[1].lower()
+    if extension == ".xlsx":
+        return _read_xlsx_rows(file_path, progress_callback=progress_callback)
+
     raw_bytes = _read_csv_bytes(file_path, progress_callback=progress_callback)
     last_rows: List[List[str]] = []
     for encoding_name in ("utf-8-sig", "utf-8", "cp1252", "latin-1"):
@@ -74,6 +78,29 @@ def _parse_csv_text(text: str, progress_callback: ProgressCallback | None = None
         return rows
     except csv.Error:
         return []
+
+
+def _read_xlsx_rows(file_path: str, progress_callback: ProgressCallback | None = None) -> List[List[str]]:
+    try:
+        from openpyxl import load_workbook
+    except Exception as exc:
+        raise RuntimeError(f"No se pudo abrir XLSX porque falta openpyxl: {exc}") from exc
+
+    if progress_callback:
+        progress_callback(0.15, "Abriendo libro XLSX...")
+    workbook = load_workbook(filename=file_path, read_only=True, data_only=True)
+    try:
+        worksheet = workbook.active
+        total_rows = max(1, int(getattr(worksheet, "max_row", 0) or 1))
+        rows: List[List[str]] = []
+        for index, row in enumerate(worksheet.iter_rows(values_only=True), start=1):
+            rows.append(["" if value is None else str(value) for value in row])
+            if progress_callback and (index == 1 or index % 100 == 0 or index == total_rows):
+                progress = 0.20 + 0.70 * (index / total_rows)
+                progress_callback(min(0.90, progress), f"Leyendo filas del XLSX ({index}/{total_rows})...")
+        return rows
+    finally:
+        workbook.close()
 
 
 def parse_numeric(value, factor: float = 1.0, default: float = 0.0) -> float:

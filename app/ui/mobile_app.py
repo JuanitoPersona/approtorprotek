@@ -43,7 +43,7 @@ class RotorProtekMobileApp(MDApp):
         root = MDBoxLayout(orientation="vertical", md_bg_color=APP_THEME["background"])
         header = MDBoxLayout(orientation="vertical", adaptive_height=True, padding=dp(16), spacing=dp(8))
         header.add_widget(MDLabel(text="RotorProtek", bold=True, font_style="H5", adaptive_height=True))
-        self.file_label = MDLabel(text="Sin CSV cargado", adaptive_height=True, theme_text_color="Secondary")
+        self.file_label = MDLabel(text="Sin archivo cargado", adaptive_height=True, theme_text_color="Secondary")
         header.add_widget(self.file_label)
 
         nav_scroll = ScrollView(
@@ -54,7 +54,7 @@ class RotorProtekMobileApp(MDApp):
             bar_width=0,
         )
         nav = MDBoxLayout(orientation="horizontal", adaptive_width=True, spacing=dp(8))
-        self.import_button = MDRaisedButton(text="CSV", on_release=lambda *_: self.show_screen("import"))
+        self.import_button = MDRaisedButton(text="Archivo", on_release=lambda *_: self.show_screen("import"))
         self.viewer_button = MDFlatButton(text="Arranque", on_release=lambda *_: self.show_screen("viewer"))
         self.cm_button = MDFlatButton(text="CM", on_release=lambda *_: self.show_screen("condition_monitoring"))
         self.history_button = MDFlatButton(text="Historico", on_release=lambda *_: self.show_screen("historical"))
@@ -80,7 +80,7 @@ class RotorProtekMobileApp(MDApp):
 
     def open_file_manager(self):
         if self._loading_csv:
-            self.state.validation_messages = ["Espera a que termine la carga actual del CSV."]
+            self.state.validation_messages = ["Espera a que termine la carga actual del archivo."]
             self.refresh_ui()
             self.show_screen("import")
             return
@@ -105,8 +105,8 @@ class RotorProtekMobileApp(MDApp):
 
     def select_file_path(self, path: str, display_name: str | None = None):
         candidate_name = (display_name or os.path.basename(path or "")).strip()
-        if not candidate_name.lower().endswith(".csv"):
-            self.state.validation_messages = ["El archivo seleccionado no es un CSV."]
+        if not candidate_name.lower().endswith((".csv", ".xlsx")):
+            self.state.validation_messages = ["El archivo seleccionado no es compatible. Usa CSV o XLSX."]
             self.refresh_ui()
             self.show_screen("import")
             return
@@ -174,7 +174,7 @@ class RotorProtekMobileApp(MDApp):
         self._refresh_active_screen()
 
     def refresh_ui(self):
-        self.file_label.text = self.state.current_file_label if self.state.current_file_label else "Sin CSV cargado"
+        self.file_label.text = self.state.current_file_label if self.state.current_file_label else "Sin archivo cargado"
         self._set_nav_visibility(self.viewer_button, self.state.has_dataset)
         self._set_nav_visibility(self.cm_button, self.state.is_multi)
         self._set_nav_visibility(self.history_button, self.state.is_multi)

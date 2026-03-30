@@ -70,13 +70,13 @@ class MobileAppState:
 
         if file_size == 0:
             self.dataset = None
-            self.validation_messages = ["El archivo CSV esta vacio."]
+            self.validation_messages = ["El archivo seleccionado esta vacio."]
             return False, self.validation_messages[0]
 
         if file_size > MAX_CSV_SIZE_BYTES:
             self.dataset = None
             self.validation_messages = [
-                "El archivo CSV es demasiado grande para abrirlo con seguridad en el movil."
+                "El archivo seleccionado es demasiado grande para abrirlo con seguridad en el movil."
             ]
             return False, self.validation_messages[0]
 
@@ -91,7 +91,7 @@ class MobileAppState:
             dataset = parse_csv_dataset(rows)
         except Exception as exc:
             self.dataset = None
-            self.validation_messages = [f"No se pudo leer el CSV: {exc}"]
+            self.validation_messages = [f"No se pudo leer el archivo: {exc}"]
             return False, self.validation_messages[0]
 
         self.dataset = dataset
@@ -101,9 +101,10 @@ class MobileAppState:
 
         self.last_load_ok = True
         self.load_progress = 100
-        self._report_progress(progress_callback, 100, "CSV cargado correctamente.")
+        self._report_progress(progress_callback, 100, "Archivo cargado correctamente.")
         mode_label = "multiarranque" if len(dataset.records) > 1 else "arranque unico"
-        return True, f"CSV cargado: {len(dataset.records)} arranque(s), modo {mode_label}."
+        source_label = "XLSX" if file_path.lower().endswith(".xlsx") else "CSV"
+        return True, f"{source_label} cargado: {len(dataset.records)} arranque(s), modo {mode_label}."
 
     def _report_progress(self, callback: Callable[[int, str], None] | None, percent: int, text: str):
         percent = max(0, min(100, int(percent)))

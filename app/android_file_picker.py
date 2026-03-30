@@ -102,11 +102,12 @@ class AndroidCsvPicker:
             pass
 
         display_name = self._resolve_display_name(resolver, uri, OpenableColumns)
-        if not display_name.lower().endswith(".csv"):
-            raise ValueError("El archivo seleccionado no tiene extension .csv")
+        if not display_name.lower().endswith((".csv", ".xlsx")):
+            raise ValueError("El archivo seleccionado no tiene extension .csv ni .xlsx")
 
         cache_dir = str(activity.getCacheDir().getAbsolutePath())
-        safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", display_name) or f"startup_{int(time.time())}.csv"
+        extension = ".xlsx" if display_name.lower().endswith(".xlsx") else ".csv"
+        safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", display_name) or f"startup_{int(time.time())}{extension}"
         local_path = os.path.join(cache_dir, safe_name)
         self._copy_uri_to_file(resolver, uri, local_path)
         return local_path, display_name
@@ -131,19 +132,27 @@ class AndroidCsvPicker:
         return f"startup_{int(time.time())}.csv"
 
     def _copy_uri_to_file(self, resolver, uri, local_path: str) -> None:
-        stream = resolver.openInputStream(uri)
-        if stream is None:
+        from jnius import autoclass
+        from jnius import jarray
+
+        input_stream = resolver.openInputStream(uri)
+        if input_stream is None:
             raise RuntimeError("Android no pudo abrir el flujo del archivo seleccionado.")
 
+        FileOutputStream = autoclass("java.io.FileOutputStream")
+        output_stream = FileOutputStream(local_path)
+        buffer = jarray.zeros(65536, "b")
         try:
-            with open(local_path, "wb") as output_file:
-                while True:
-                    chunk = stream.read()
-                    if chunk == -1:
-                        break
-                    output_file.write(bytes([chunk]))
+            while True:
+                bytes_read = input_stream.read(buffer)
+                if bytes_read == -1:
+                    break
+                output_stream.write(buffer, 0, bytes_read)
         finally:
-            stream.close()
+            try:
+                input_stream.close()
+            finally:
+                output_stream.close()
 
     def _unbind(self) -> None:
         if not self._bound:

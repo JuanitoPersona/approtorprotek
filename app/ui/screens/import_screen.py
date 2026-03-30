@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 from kivy.metrics import dp
 from kivy.uix.progressbar import ProgressBar
 from kivy.uix.scrollview import ScrollView
@@ -21,10 +19,10 @@ class ImportScreen(MDScreen):
         self.name = "import"
 
         root = MDBoxLayout(orientation="vertical", padding=dp(16), spacing=dp(12))
-        root.add_widget(MDLabel(text="Carga de CSV", bold=True, font_style="H5", adaptive_height=True))
+        root.add_widget(MDLabel(text="Carga de archivo", bold=True, font_style="H5", adaptive_height=True))
         root.add_widget(
             MDLabel(
-                text="Importa un CSV de RotorProtek desde el dispositivo y valida su estructura antes de abrir las pantallas de analisis.",
+                text="Importa un CSV o XLSX de RotorProtek desde el dispositivo y valida su estructura antes de abrir las pantallas de analisis.",
                 theme_text_color="Secondary",
                 adaptive_height=True,
             )
@@ -41,7 +39,7 @@ class ImportScreen(MDScreen):
         self.file_card.body.add_widget(self.file_name_label)
         self.file_card.body.add_widget(
             MDRaisedButton(
-                text="Seleccionar CSV del dispositivo",
+                text="Seleccionar CSV o XLSX",
                 pos_hint={"center_x": 0.5},
                 on_release=lambda *_: self.app_controller.open_file_manager(),
             )
@@ -54,7 +52,7 @@ class ImportScreen(MDScreen):
         self.body.add_widget(self.summary_card)
 
         self.validation_card = SectionCard("Validacion")
-        self.validation_label = MDLabel(text="Selecciona un CSV para comenzar.", adaptive_height=True)
+        self.validation_label = MDLabel(text="Selecciona un CSV o XLSX para comenzar.", adaptive_height=True)
         self.progress_label = MDLabel(text="", adaptive_height=True, theme_text_color="Secondary")
         self.progress_bar = ProgressBar(max=100, value=0, size_hint_y=None, height=dp(12))
         self.validation_card.body.add_widget(self.validation_label)
@@ -80,9 +78,9 @@ class ImportScreen(MDScreen):
         if state.validation_messages:
             self.validation_label.text = "\n".join(f"- {message}" for message in state.validation_messages)
         elif state.has_dataset:
-            self.validation_label.text = "CSV valido y listo para usar."
+            self.validation_label.text = "Archivo valido y listo para usar."
         else:
-            self.validation_label.text = "Selecciona un CSV para comenzar."
+            self.validation_label.text = "Selecciona un CSV o XLSX para comenzar."
 
         loading = getattr(self.app_controller, "_loading_csv", False)
         self.progress_bar.opacity = 1 if loading else 0

@@ -1,0 +1,10 @@
+.buildozer/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+bin/
+dist/
+build/
+old/
+tmp_*.csv

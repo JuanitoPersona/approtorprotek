@@ -1,0 +1,80 @@
+from __future__ import annotations
+
+import os
+
+from kivy.metrics import dp
+from kivy.uix.scrollview import ScrollView
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.button import MDRaisedButton
+from kivymd.uix.gridlayout import MDGridLayout
+from kivymd.uix.label import MDLabel
+from kivymd.uix.screen import MDScreen
+
+from ..widgets.cards import MetricCard, SectionCard
+
+
+class ImportScreen(MDScreen):
+    def __init__(self, app_controller, **kwargs):
+        super().__init__(**kwargs)
+        self.app_controller = app_controller
+        self.name = "import"
+
+        root = MDBoxLayout(orientation="vertical", padding=dp(16), spacing=dp(12))
+        root.add_widget(MDLabel(text="Carga de CSV", bold=True, font_style="H5", adaptive_height=True))
+        root.add_widget(
+            MDLabel(
+                text="Importa un CSV de RotorProtek desde el dispositivo y valida su estructura antes de abrir las pantallas de analisis.",
+                theme_text_color="Secondary",
+                adaptive_height=True,
+            )
+        )
+
+        scroll = ScrollView(do_scroll_x=False)
+        self.body = MDBoxLayout(orientation="vertical", adaptive_height=True, spacing=dp(12), padding=(0, dp(8), 0, dp(24)))
+        scroll.add_widget(self.body)
+        root.add_widget(scroll)
+        self.add_widget(root)
+
+        self.file_card = SectionCard("Archivo")
+        self.file_name_label = MDLabel(text="Ningun archivo cargado", adaptive_height=True)
+        self.file_card.body.add_widget(self.file_name_label)
+        self.file_card.body.add_widget(
+            MDRaisedButton(
+                text="Seleccionar CSV del dispositivo",
+                pos_hint={"center_x": 0.5},
+                on_release=lambda *_: self.app_controller.open_file_manager(),
+            )
+        )
+        self.body.add_widget(self.file_card)
+
+        self.summary_card = SectionCard("Resumen")
+        self.summary_grid = MDGridLayout(cols=2, adaptive_height=True, spacing=dp(10), row_default_height=dp(96), row_force_default=True)
+        self.summary_card.body.add_widget(self.summary_grid)
+        self.body.add_widget(self.summary_card)
+
+        self.validation_card = SectionCard("Validacion")
+        self.validation_label = MDLabel(text="Selecciona un CSV para comenzar.", adaptive_height=True)
+        self.validation_card.body.add_widget(self.validation_label)
+        self.body.add_widget(self.validation_card)
+
+    def refresh(self):
+        state = self.app_controller.state
+        self.file_name_label.text = os.path.basename(state.current_file) if state.current_file else "Ningun archivo cargado"
+
+        self.summary_grid.clear_widgets()
+        self.summary_grid.add_widget(MetricCard("Estado", "Listo" if state.last_load_ok else "Pendiente"))
+        if state.has_dataset:
+            total = len(state.records)
+            mode = "Multi" if state.is_multi else "Unico"
+            self.summary_grid.add_widget(MetricCard("Arranques", str(total)))
+            self.summary_grid.add_widget(MetricCard("Modo", mode))
+        else:
+            self.summary_grid.add_widget(MetricCard("Arranques", "0"))
+            self.summary_grid.add_widget(MetricCard("Modo", "Sin datos"))
+
+        if state.validation_messages:
+            self.validation_label.text = "\n".join(f"- {message}" for message in state.validation_messages)
+        elif state.has_dataset:
+            self.validation_label.text = "CSV valido y listo para usar."
+        else:
+            self.validation_label.text = "Selecciona un CSV para comenzar."

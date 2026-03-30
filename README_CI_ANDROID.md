@@ -5,6 +5,7 @@ Este repositorio ya incluye una compilacion automatica de APK con GitHub Actions
 ## Archivo de workflow
 
 - `.github/workflows/android-apk.yml`
+- `.github/workflows/android-apk-release.yml`
 
 ## Que hace el workflow
 
@@ -44,6 +45,13 @@ Para una APK release firmada en el futuro:
 - password del keystore
 - password de la clave
 
+Nombres exactos de secrets para el workflow release:
+
+- `ANDROID_KEYSTORE_BASE64`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
 Eso no es necesario para obtener una APK funcional de prueba descargable.
 
 ## Ajustes de reproducibilidad
@@ -69,6 +77,7 @@ El workflow tambien cachea:
 - `buildozer.spec`
 - `requirements-buildozer.txt`
 - `.github/workflows/android-apk.yml`
+- `.github/workflows/android-apk-release.yml`
 
 ## Resultado esperado
 

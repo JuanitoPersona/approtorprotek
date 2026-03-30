@@ -47,8 +47,7 @@ class AndroidCsvPicker:
             intent.addCategory(Intent.CATEGORY_OPENABLE)
             intent.setType("*/*")
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
-            chooser = Intent.createChooser(intent, "Seleccionar CSV")
-            PythonActivity.mActivity.startActivityForResult(chooser, self.request_code)
+            PythonActivity.mActivity.startActivityForResult(intent, self.request_code)
         except Exception as exc:
             self._dispatch_error(f"No se pudo abrir el selector de archivos: {exc}")
 

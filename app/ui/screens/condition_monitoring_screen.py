@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from kivy.effects.scroll import ScrollEffect
 from kivy.metrics import dp
 from kivy.uix.scrollview import ScrollView
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDFlatButton, MDRaisedButton
+from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.label import MDLabel
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.screen import MDScreen
@@ -27,7 +29,7 @@ class ConditionMonitoringScreen(MDScreen):
         root.add_widget(MDLabel(text="Condition Monitoring", bold=True, font_style="H5", adaptive_height=True))
         root.add_widget(MDLabel(text="Comparativa compacta y movil.", theme_text_color="Secondary", adaptive_height=True))
 
-        scroll = ScrollView(do_scroll_x=False)
+        scroll = ScrollView(do_scroll_x=False, effect_cls=ScrollEffect)
         self.scroll = scroll
         self.scroll.bind(scroll_y=lambda *_args: self.app_controller.handle_screen_scroll(self.scroll.scroll_y))
         self.content = MDBoxLayout(orientation="vertical", adaptive_height=True, spacing=dp(12), padding=(0, dp(8), 0, dp(24)))
@@ -36,16 +38,22 @@ class ConditionMonitoringScreen(MDScreen):
         self.add_widget(root)
 
         self.selector_card = SectionCard("Variables")
+        self.selector_grid = MDGridLayout(cols=1, adaptive_height=True, spacing=dp(10))
+        self.main_selector_box = MDBoxLayout(orientation="vertical", adaptive_height=True, spacing=dp(6))
         self.main_add_button = MDRaisedButton(text="+ Principal", on_release=self._open_main_metric_menu)
         self.main_metrics_box = MDBoxLayout(orientation="vertical", adaptive_height=True, spacing=dp(6))
+        self.secondary_selector_box = MDBoxLayout(orientation="vertical", adaptive_height=True, spacing=dp(6))
         self.secondary_add_button = MDRaisedButton(text="+ Secundaria", on_release=self._open_secondary_metric_menu)
         self.secondary_metrics_box = MDBoxLayout(orientation="vertical", adaptive_height=True, spacing=dp(6))
-        self.selector_card.body.add_widget(MDLabel(text="Grafica principal", adaptive_height=True, bold=True))
-        self.selector_card.body.add_widget(self.main_add_button)
-        self.selector_card.body.add_widget(self.main_metrics_box)
-        self.selector_card.body.add_widget(MDLabel(text="Grafica secundaria", adaptive_height=True, bold=True))
-        self.selector_card.body.add_widget(self.secondary_add_button)
-        self.selector_card.body.add_widget(self.secondary_metrics_box)
+        self.main_selector_box.add_widget(MDLabel(text="Grafica principal", adaptive_height=True, bold=True))
+        self.main_selector_box.add_widget(self.main_add_button)
+        self.main_selector_box.add_widget(self.main_metrics_box)
+        self.secondary_selector_box.add_widget(MDLabel(text="Grafica secundaria", adaptive_height=True, bold=True))
+        self.secondary_selector_box.add_widget(self.secondary_add_button)
+        self.secondary_selector_box.add_widget(self.secondary_metrics_box)
+        self.selector_grid.add_widget(self.main_selector_box)
+        self.selector_grid.add_widget(self.secondary_selector_box)
+        self.selector_card.body.add_widget(self.selector_grid)
         self.selector_card.body.add_widget(
             MDLabel(
                 text="Puedes anadir hasta 4 variables por grafica. Usa el boton + y quita las que no necesites.",
@@ -191,6 +199,7 @@ class ConditionMonitoringScreen(MDScreen):
 
     def _apply_responsive_layout(self):
         landscape = self.width > self.height and self.width > dp(700)
+        self.selector_grid.cols = 2 if landscape else 1
         self.main_chart.height = dp(300) if landscape else dp(240)
         self.secondary_chart.height = dp(300) if landscape else dp(240)
 

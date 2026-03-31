@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from copy import deepcopy
-
 from kivy.metrics import dp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDFlatButton, MDRaisedButton
+from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.screen import MDScreen
 
 from ..widgets.charts import MultiSeriesChart
@@ -16,17 +15,19 @@ class FullscreenChartScreen(MDScreen):
         self.app_controller = app_controller
         self.name = "fullscreen_chart"
 
-        root = MDBoxLayout(orientation="vertical", padding=dp(10), spacing=dp(8))
-        self.controls = MDBoxLayout(orientation="horizontal", adaptive_height=True, spacing=dp(8))
+        root = MDBoxLayout(orientation="vertical", padding=dp(8), spacing=dp(8))
+        self.controls = MDGridLayout(cols=2, adaptive_height=True, spacing=dp(8), row_default_height=dp(42), row_force_default=True)
         self.reset_button = MDFlatButton(text="Reset", on_release=lambda *_: self.chart.reset_zoom())
         self.delete_button = MDFlatButton(text="Excluir puntos", on_release=lambda *_: self._toggle_delete_mode())
         self.restore_button = MDFlatButton(text="Restaurar", on_release=lambda *_: self.chart.restore_points())
         self.close_button = MDRaisedButton(text="Cerrar", on_release=lambda *_: self.app_controller.close_fullscreen_chart())
         for widget in (self.reset_button, self.delete_button, self.restore_button, self.close_button):
+            widget.size_hint_x = 1
             self.controls.add_widget(widget)
         root.add_widget(self.controls)
 
         self.chart = MultiSeriesChart(size_hint=(1, 1))
+        self.chart.enable_touch_navigation = True
         root.add_widget(self.chart)
         self.add_widget(root)
         self.bind(size=lambda *_: self._apply_responsive_layout())
@@ -49,21 +50,21 @@ class FullscreenChartScreen(MDScreen):
         show_points: bool = False,
         footer: str = "",
     ):
-        self.chart.series = deepcopy(series)
+        self.chart.load_series_for_view(series)
         self.chart.x_axis_label = x_axis_label
         self.chart.y_axis_label = y_axis_label
         self.chart.chart_mode = chart_mode
         self.chart.show_legend = show_legend
         self.chart.show_points = show_points
         self.chart.open_fullscreen_callback = None
+        self.chart.enable_touch_navigation = True
         self.chart.delete_mode = False
-        self.chart._active_touches.clear()
-        self.chart._gesture_start_distance = None
+        self.chart.clear_interaction_state()
         self.delete_button.text = "Excluir puntos"
-        self.chart.capture_restore_snapshot()
         self.chart.reset_zoom()
         self._apply_responsive_layout()
 
     def _apply_responsive_layout(self):
         landscape = self.width > self.height and self.width > dp(700)
         self.chart.stroke_width = 2.2 if landscape else 1.8
+        self.controls.cols = 4 if landscape else 2

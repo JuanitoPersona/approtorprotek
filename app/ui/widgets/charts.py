@@ -4,7 +4,6 @@ import math
 
 from kivy.core.text import Label as CoreLabel
 from kivy.graphics import Color, Ellipse, Line, Rectangle
-from copy import deepcopy
 
 from kivy.properties import BooleanProperty, ListProperty, NumericProperty, ObjectProperty, StringProperty
 from kivy.uix.widget import Widget
@@ -98,6 +97,7 @@ class MultiSeriesChart(Widget):
     show_points = BooleanProperty(False)
     delete_mode = BooleanProperty(False)
     open_fullscreen_callback = ObjectProperty(None, allownone=True)
+    enable_touch_navigation = BooleanProperty(False)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -121,6 +121,7 @@ class MultiSeriesChart(Widget):
             chart_mode=self._redraw,
             show_points=self._redraw,
             delete_mode=self._redraw,
+            enable_touch_navigation=self._redraw,
         )
     def zoom_in(self):
         self._set_zoom(self.zoom_factor * 1.35)
@@ -133,16 +134,37 @@ class MultiSeriesChart(Widget):
         self.pan_x = 0.5
         self.pan_y = 0.5
 
+    def load_series_for_view(self, series: list[dict] | None):
+        self._base_series = []
+        self.series = self._clone_series(series or [], detach_points=False)
+
     def restore_points(self):
         if not self._base_series:
             return
-        self.series = deepcopy(self._base_series)
+        self.series = self._clone_series(self._base_series, detach_points=True)
+        self.delete_mode = False
 
     def toggle_delete_mode(self):
+        if not self.delete_mode and not self._base_series:
+            self.capture_restore_snapshot()
         self.delete_mode = not self.delete_mode
 
     def capture_restore_snapshot(self):
-        self._base_series = deepcopy(self.series)
+        self._base_series = self._clone_series(self.series, detach_points=True)
+
+    def clear_interaction_state(self):
+        self._active_touches.clear()
+        self._gesture_start_distance = None
+        self._gesture_start_zoom = self.zoom_factor
+
+    def _clone_series(self, series: list[dict], detach_points: bool) -> list[dict]:
+        cloned = []
+        for item in series:
+            cloned_item = {key: value for key, value in item.items() if key != "points"}
+            points = item.get("points", [])
+            cloned_item["points"] = list(points) if detach_points else points
+            cloned.append(cloned_item)
+        return cloned
 
     def _set_zoom(self, value: float):
         self.zoom_factor = min(12.0, max(1.0, float(value)))
@@ -153,6 +175,11 @@ class MultiSeriesChart(Widget):
         if not self.collide_point(*touch.pos):
             return super().on_touch_down(touch)
         if self._touch_in_plot(touch.pos):
+            if not self.enable_touch_navigation:
+                if getattr(touch, "is_double_tap", False) and callable(self.open_fullscreen_callback):
+                    self.open_fullscreen_callback()
+                    return True
+                return super().on_touch_down(touch)
             if self.delete_mode:
                 self._delete_nearest_point(touch.pos)
                 return True
@@ -164,7 +191,6 @@ class MultiSeriesChart(Widget):
             if getattr(touch, "is_double_tap", False):
                 if callable(self.open_fullscreen_callback):
                     self.open_fullscreen_callback()
-                self.reset_zoom()
             return True
         return super().on_touch_down(touch)
 
@@ -204,12 +230,18 @@ class MultiSeriesChart(Widget):
         series_index, point_index, distance = nearest
         if distance > 36:
             return
-        updated = deepcopy(self.series)
-        points = list(updated[series_index].get("points", []))
-        if 0 <= point_index < len(points):
-            points.pop(point_index)
-            updated[series_index]["points"] = points
-            self.series = updated
+        updated = []
+        for current_index, item in enumerate(self.series):
+            cloned_item = {key: value for key, value in item.items() if key != "points"}
+            if current_index == series_index:
+                points = list(item.get("points", []))
+                if 0 <= point_index < len(points):
+                    points.pop(point_index)
+                cloned_item["points"] = points
+            else:
+                cloned_item["points"] = item.get("points", [])
+            updated.append(cloned_item)
+        self.series = updated
 
     def _nearest_point_reference(self, pos):
         if self.chart_mode == "bar":

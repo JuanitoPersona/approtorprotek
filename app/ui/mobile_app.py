@@ -196,19 +196,22 @@ class RotorProtekMobileApp(MDApp):
         show_points: bool = False,
         footer: str = "",
     ):
-        self.fullscreen_chart_screen.apply_chart(
-            title=title,
-            subtitle=subtitle,
-            series=series,
-            x_axis_label=x_axis_label,
-            y_axis_label=y_axis_label,
-            chart_mode=chart_mode,
-            show_legend=show_legend,
-            show_points=show_points,
-            footer=footer,
-        )
-        self.screen_manager.current = "fullscreen_chart"
-        self.set_header_visible(False)
+        try:
+            self.fullscreen_chart_screen.apply_chart(
+                title=title,
+                subtitle=subtitle,
+                series=series,
+                x_axis_label=x_axis_label,
+                y_axis_label=y_axis_label,
+                chart_mode=chart_mode,
+                show_legend=show_legend,
+                show_points=show_points,
+                footer=footer,
+            )
+            self.show_screen("fullscreen_chart")
+        except Exception as exc:
+            self.state.validation_messages = [f"No se pudo abrir la grafica a pantalla completa: {exc}"]
+            self.refresh_ui()
 
     def close_fullscreen_chart(self):
         target = self._previous_screen if self._previous_screen in {"import", "viewer", "condition_monitoring", "historical"} else "viewer"

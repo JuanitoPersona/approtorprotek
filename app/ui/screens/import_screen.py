@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 
+from kivy.effects.scroll import ScrollEffect
 from kivy.metrics import dp
 from kivy.uix.image import Image
 from kivy.uix.progressbar import ProgressBar
@@ -33,7 +34,7 @@ class ImportScreen(MDScreen):
             )
         )
 
-        scroll = ScrollView(do_scroll_x=False)
+        scroll = ScrollView(do_scroll_x=False, effect_cls=ScrollEffect)
         self.scroll = scroll
         self.scroll.bind(scroll_y=lambda *_args: self.app_controller.handle_screen_scroll(self.scroll.scroll_y))
         self.body = MDBoxLayout(orientation="vertical", adaptive_height=True, spacing=dp(12), padding=(0, dp(8), 0, dp(24)))

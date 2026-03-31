@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from kivy.effects.scroll import ScrollEffect
 from kivy.metrics import dp
 from kivy.uix.scrollview import ScrollView
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -22,7 +23,7 @@ class HistoricalScreen(MDScreen):
         root.add_widget(MDLabel(text="Historico", bold=True, font_style="H5", adaptive_height=True))
         root.add_widget(MDLabel(text="Tendencias historicas y clasificacion operativa.", theme_text_color="Secondary", adaptive_height=True))
 
-        scroll = ScrollView(do_scroll_x=False)
+        scroll = ScrollView(do_scroll_x=False, effect_cls=ScrollEffect)
         self.scroll = scroll
         self.scroll.bind(scroll_y=lambda *_args: self.app_controller.handle_screen_scroll(self.scroll.scroll_y))
         self.content = MDBoxLayout(orientation="vertical", adaptive_height=True, spacing=dp(12), padding=(0, dp(8), 0, dp(24)))

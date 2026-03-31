@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from kivy.effects.scroll import ScrollEffect
 from kivy.metrics import dp
 from kivy.uix.scrollview import ScrollView
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -23,7 +24,7 @@ class ViewerScreen(MDScreen):
         self.start_menu = None
 
         root = MDBoxLayout(orientation="vertical", padding=dp(16), spacing=dp(12))
-        scroll = ScrollView(do_scroll_x=False)
+        scroll = ScrollView(do_scroll_x=False, effect_cls=ScrollEffect)
         self.scroll = scroll
         self.scroll.bind(scroll_y=lambda *_args: self.app_controller.handle_screen_scroll(self.scroll.scroll_y))
         self.content = MDBoxLayout(
@@ -54,20 +55,23 @@ class ViewerScreen(MDScreen):
         self.selector_card.body.add_widget(self.selector_hint)
         self.content.add_widget(self.selector_card)
 
+        self.analysis_grid = MDGridLayout(cols=1, adaptive_height=True, spacing=dp(12))
+        self.content.add_widget(self.analysis_grid)
+
         self.metrics_card = SectionCard("Resumen rapido")
         self.metrics_grid = MDGridLayout(cols=2, adaptive_height=True, spacing=dp(10), row_default_height=dp(96), row_force_default=True)
         self.metrics_card.body.add_widget(self.metrics_grid)
-        self.content.add_widget(self.metrics_card)
+        self.analysis_grid.add_widget(self.metrics_card)
 
         self.secondary_metrics_card = SectionCard("Metrica tecnica")
         self.secondary_metrics_grid = MDGridLayout(cols=2, adaptive_height=True, spacing=dp(10), row_default_height=dp(96), row_force_default=True)
         self.secondary_metrics_card.body.add_widget(self.secondary_metrics_grid)
-        self.content.add_widget(self.secondary_metrics_card)
+        self.analysis_grid.add_widget(self.secondary_metrics_card)
 
         self.detail_card = SectionCard("Detalle del arranque")
         self.detail_layout = MDBoxLayout(orientation="vertical", adaptive_height=True, spacing=dp(8))
         self.detail_card.body.add_widget(self.detail_layout)
-        self.content.add_widget(self.detail_card)
+        self.analysis_grid.add_widget(self.detail_card)
 
         self.signals_card = SectionCard("Senales principales")
         self.signal_chart = MultiSeriesChart(size_hint_y=None, height=dp(240), x_axis_label="Tiempo [s]", y_axis_label="% nominal")
@@ -198,6 +202,7 @@ class ViewerScreen(MDScreen):
     def _apply_responsive_layout(self):
         landscape = self.width > self.height and self.width > dp(700)
         self.header_meta.cols = 2 if landscape else 1
+        self.analysis_grid.cols = 2 if landscape else 1
         self.metrics_grid.cols = 4 if landscape else 2
         self.secondary_metrics_grid.cols = 4 if landscape else 2
         self.signal_chart.height = dp(300) if landscape else dp(240)

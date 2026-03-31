@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import os
+
 from kivy.metrics import dp
+from kivy.uix.image import Image
 from kivy.uix.progressbar import ProgressBar
 from kivy.uix.scrollview import ScrollView
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -19,6 +22,8 @@ class ImportScreen(MDScreen):
         self.name = "import"
 
         root = MDBoxLayout(orientation="vertical", padding=dp(16), spacing=dp(12))
+        logo_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "logo_app.png")
+        root.add_widget(Image(source=logo_path, size_hint_y=None, height=dp(72), allow_stretch=True, keep_ratio=True))
         root.add_widget(MDLabel(text="Carga de archivo", bold=True, font_style="H5", adaptive_height=True))
         root.add_widget(
             MDLabel(

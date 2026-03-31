@@ -26,8 +26,8 @@ class MobileAppState:
     current_file_label: str = ""
     dataset: Optional[StartupDataset] = None
     selected_start_index: int = 0
-    cm_main_metric: str = "Duración (s)"
-    cm_secondary_metric: str = "I máx (Arms)"
+    cm_main_metrics: List[str] = field(default_factory=lambda: ["Duración (s)"])
+    cm_secondary_metrics: List[str] = field(default_factory=lambda: ["I máx (Arms)"])
     show_harmonics: bool = True
     validation_messages: List[str] = field(default_factory=list)
     last_load_ok: bool = False
@@ -54,6 +54,8 @@ class MobileAppState:
         self.current_file = file_path
         self.current_file_label = display_name or os.path.basename(file_path)
         self.selected_start_index = 0
+        self.cm_main_metrics = ["Duración (s)"]
+        self.cm_secondary_metrics = ["I máx (Arms)"]
         self.show_harmonics = True
         self.last_load_ok = False
         self.load_progress = 0
@@ -199,6 +201,32 @@ class MobileAppState:
                 continue
             points.append((float(index + 1), numeric))
         return points, omitted
+
+    def add_cm_metric(self, target: str, metric_name: str):
+        metrics = self.cm_main_metrics if target == "main" else self.cm_secondary_metrics
+        if metric_name in metrics or len(metrics) >= 4:
+            return
+        metrics.append(metric_name)
+
+    def remove_cm_metric(self, target: str, metric_name: str):
+        metrics = self.cm_main_metrics if target == "main" else self.cm_secondary_metrics
+        if metric_name not in metrics or len(metrics) <= 1:
+            return
+        metrics.remove(metric_name)
+
+    def cm_axis_label(self, metrics: List[str]) -> str:
+        if not metrics:
+            return "Valor"
+        return metrics[0] if len(metrics) == 1 else "Valor"
+
+    def cm_title(self, metrics: List[str], fallback: str) -> str:
+        if not metrics:
+            return fallback
+        if len(metrics) == 1:
+            return metrics[0]
+        if len(metrics) == 2:
+            return f"{metrics[0]} + {metrics[1]}"
+        return f"{metrics[0]} + {metrics[1]} + {len(metrics) - 2} mas"
 
     def historical_payload(self) -> dict:
         legacy_records = [record.to_legacy() for record in self.records]

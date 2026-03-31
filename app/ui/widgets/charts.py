@@ -514,7 +514,7 @@ class PieChartWidget(Widget):
                 Color(*rgba)
                 Ellipse(pos=(self.x + 14, legend_y + 3), size=(10, 10))
             legend_text = f"{segment.get('label', 'Dato')}: {int(value)} ({percentage:.0f}%)"
-            _draw_text(self.canvas, legend_text, self.x + 30, legend_y, font_size=11)
+            _draw_text(self.canvas, legend_text, self.x + 30, legend_y, color=rgba, font_size=11)
             legend_y -= 18
             start_angle += sweep
 

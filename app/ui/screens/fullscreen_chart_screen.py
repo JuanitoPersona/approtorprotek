@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from copy import deepcopy
+
 from kivy.metrics import dp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDFlatButton, MDRaisedButton
@@ -47,7 +49,7 @@ class FullscreenChartScreen(MDScreen):
         show_points: bool = False,
         footer: str = "",
     ):
-        self.chart.series = list(series)
+        self.chart.series = deepcopy(series)
         self.chart.x_axis_label = x_axis_label
         self.chart.y_axis_label = y_axis_label
         self.chart.chart_mode = chart_mode
@@ -55,6 +57,8 @@ class FullscreenChartScreen(MDScreen):
         self.chart.show_points = show_points
         self.chart.open_fullscreen_callback = None
         self.chart.delete_mode = False
+        self.chart._active_touches.clear()
+        self.chart._gesture_start_distance = None
         self.delete_button.text = "Excluir puntos"
         self.chart.capture_restore_snapshot()
         self.chart.reset_zoom()

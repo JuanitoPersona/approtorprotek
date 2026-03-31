@@ -33,6 +33,7 @@ class RotorProtekMobileApp(MDApp):
         self._loading_csv = False
         self._last_progress_percent = -1
         self._previous_screen = "import"
+        self._header_visible = True
 
         self.file_manager = MDFileManager(exit_manager=self.close_file_manager, select_path=self._select_file_from_desktop, preview=False)
         if is_android_runtime():
@@ -80,6 +81,7 @@ class RotorProtekMobileApp(MDApp):
         root.add_widget(self.screen_manager)
 
         self.refresh_ui()
+        self._header_visible = False
         self.set_header_visible(True)
         return root
 
@@ -217,16 +219,26 @@ class RotorProtekMobileApp(MDApp):
     def set_header_visible(self, visible: bool):
         if not hasattr(self, "header"):
             return
+        if self._header_visible == visible:
+            return
+        self._header_visible = visible
         self.header.opacity = 1 if visible else 0
         self.header.height = self.header.minimum_height if visible else 0
 
     def handle_screen_scroll(self, scroll_y: float):
         if getattr(self, "screen_manager", None) is None:
             return
-        if self.screen_manager.current == "fullscreen_chart":
+        current = self.screen_manager.current
+        if current == "fullscreen_chart":
             self.set_header_visible(False)
             return
-        self.set_header_visible(scroll_y >= 0.985)
+        if current not in {"viewer", "condition_monitoring", "historical"}:
+            self.set_header_visible(True)
+            return
+        if self._header_visible and scroll_y < 0.96:
+            self.set_header_visible(False)
+        elif not self._header_visible and scroll_y > 0.992:
+            self.set_header_visible(True)
 
     def refresh_ui(self):
         self.file_label.text = self.state.current_file_label if self.state.current_file_label else "Sin archivo cargado"

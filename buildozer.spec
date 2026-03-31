@@ -11,7 +11,7 @@ icon.filename = logo_app.png
 
 requirements = python3,kivy==2.3.0,kivymd==1.2.0,numpy,pyjnius,openpyxl
 
-orientation = all
+orientation = portrait,landscape
 fullscreen = 0
 
 [buildozer]

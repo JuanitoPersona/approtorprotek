@@ -63,7 +63,7 @@ class HistoricalScreen(MDScreen):
 
     def _build_pie_card(self, title: str):
         card = SectionCard(title)
-        chart = PieChartWidget(size_hint_y=None, height=dp(220))
+        chart = PieChartWidget(size_hint_y=None, height=dp(280))
         info = MDLabel(adaptive_height=True, theme_text_color="Secondary")
         card.body.add_widget(chart)
         card.body.add_widget(info)
@@ -146,7 +146,7 @@ class HistoricalScreen(MDScreen):
         landscape = self.width > self.height and self.width > dp(700)
         self.pies_grid.cols = 3 if landscape else 1
         self.load_chart.height = dp(300) if landscape else dp(230)
-        pie_height = dp(250) if landscape else dp(220)
+        pie_height = dp(260) if landscape else dp(280)
         self.success_chart.height = pie_height
         self.cascade_chart.height = pie_height
         self.current_chart.height = pie_height

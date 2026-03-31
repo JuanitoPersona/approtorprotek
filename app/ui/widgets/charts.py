@@ -98,6 +98,8 @@ class MultiSeriesChart(Widget):
     delete_mode = BooleanProperty(False)
     open_fullscreen_callback = ObjectProperty(None, allownone=True)
     enable_touch_navigation = BooleanProperty(False)
+    allow_point_deletion = BooleanProperty(False)
+    x_tick_labels = ListProperty([])
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -122,6 +124,8 @@ class MultiSeriesChart(Widget):
             show_points=self._redraw,
             delete_mode=self._redraw,
             enable_touch_navigation=self._redraw,
+            allow_point_deletion=self._redraw,
+            x_tick_labels=self._redraw,
         )
     def zoom_in(self):
         self._set_zoom(self.zoom_factor * 1.35)
@@ -145,6 +149,9 @@ class MultiSeriesChart(Widget):
         self.delete_mode = False
 
     def toggle_delete_mode(self):
+        if not self.allow_point_deletion:
+            self.delete_mode = False
+            return
         if not self.delete_mode and not self._base_series:
             self.capture_restore_snapshot()
         self.delete_mode = not self.delete_mode
@@ -180,7 +187,7 @@ class MultiSeriesChart(Widget):
                     self.open_fullscreen_callback()
                     return True
                 return super().on_touch_down(touch)
-            if self.delete_mode:
+            if self.delete_mode and self.allow_point_deletion:
                 self._delete_nearest_point(touch.pos)
                 return True
             touch.grab(self)
@@ -242,6 +249,7 @@ class MultiSeriesChart(Widget):
                 cloned_item["points"] = item.get("points", [])
             updated.append(cloned_item)
         self.series = updated
+        self.reset_zoom()
 
     def _nearest_point_reference(self, pos):
         if self.chart_mode == "bar":
@@ -307,11 +315,15 @@ class MultiSeriesChart(Widget):
     def _redraw(self, *_args):
         self.canvas.clear()
         self._legend_rows = self._build_legend_rows()
-        legend_height = (18 * len(self._legend_rows) + 10) if self.show_legend and self._legend_rows else 0
+        legend_row_height = 22
+        legend_height = (legend_row_height * len(self._legend_rows) + 12) if self.show_legend and self._legend_rows else 0
+        tick_font_size = 13 if min(self.width, self.height) >= 220 else 12
+        axis_font_size = 14 if min(self.width, self.height) >= 220 else 13
+        legend_font_size = 13
 
         left = self.x + 72
         right_padding = 18
-        bottom = self.y + 56
+        bottom = self.y + 64
         top_padding = 26 + legend_height
         width = max(10.0, self.width - (left - self.x) - right_padding)
         height = max(10.0, self.height - (bottom - self.y) - top_padding)
@@ -339,10 +351,10 @@ class MultiSeriesChart(Widget):
                 Color(0.79, 0.14, 0.14, 0.12)
                 Rectangle(pos=(left, bottom), size=(width, height))
 
-        self._draw_grid_and_ticks(left, bottom, width, height, min_x, max_x, min_y, max_y)
-        self._draw_axis_labels(left, bottom, width, top)
+        self._draw_grid_and_ticks(left, bottom, width, height, min_x, max_x, min_y, max_y, tick_font_size)
+        self._draw_axis_labels(left, bottom, width, top, axis_font_size)
         if self.show_legend and self._legend_rows:
-            self._draw_legend(left, top + 10, width)
+            self._draw_legend(left, top + 10, width, legend_font_size, legend_row_height)
 
         if self.chart_mode == "bar":
             self._draw_bar_series(left, bottom, width, height, min_x, max_x, min_y, max_y)
@@ -394,8 +406,8 @@ class MultiSeriesChart(Widget):
         min_y = full_min_y + extra_y * self.pan_y
         return min_x, min_x + span_x, min_y, min_y + span_y
 
-    def _draw_grid_and_ticks(self, left, bottom, width, height, min_x, max_x, min_y, max_y):
-        x_ticks = self._bar_ticks(min_x, max_x) if self.chart_mode == "bar" else _nice_ticks(min_x, max_x, target_count=5)
+    def _draw_grid_and_ticks(self, left, bottom, width, height, min_x, max_x, min_y, max_y, tick_font_size):
+        x_ticks = self._bar_ticks(min_x, max_x) if self.chart_mode == "bar" else self._line_ticks(min_x, max_x)
         y_ticks = _nice_ticks(min_y, max_y, target_count=5)
 
         with self.canvas:
@@ -412,8 +424,9 @@ class MultiSeriesChart(Widget):
                 Line(points=[left, y_pos, left + width, y_pos], width=1)
                 Color(0.62, 0.62, 0.62, 1)
                 Line(points=[left - 4, y_pos, left, y_pos], width=1)
-            size = _draw_text(self.canvas, _format_tick(value), 0, 0, font_size=11)
-            _draw_text(self.canvas, _format_tick(value), left - size[0] - 8, y_pos - size[1] / 2.0, font_size=11)
+            label_text = _format_tick(value)
+            size = _draw_text(self.canvas, label_text, 0, 0, font_size=tick_font_size)
+            _draw_text(self.canvas, label_text, left - size[0] - 8, y_pos - size[1] / 2.0, font_size=tick_font_size)
 
         for tick in x_ticks:
             if self.chart_mode == "bar":
@@ -423,22 +436,24 @@ class MultiSeriesChart(Widget):
             else:
                 if tick < min_x - 1e-9 or tick > max_x + 1e-9:
                     continue
-                label = _format_tick(tick)
+                label = self._line_tick_label(tick)
+                if not label:
+                    continue
                 x_pos = left + ((tick - min_x) / (max_x - min_x)) * width
             with self.canvas:
                 Color(0.90, 0.90, 0.90, 1)
                 Line(points=[x_pos, bottom, x_pos, bottom + height], width=1)
                 Color(0.62, 0.62, 0.62, 1)
                 Line(points=[x_pos, bottom, x_pos, bottom - 4], width=1)
-            size = _draw_text(self.canvas, label, 0, 0, font_size=10)
-            _draw_text(self.canvas, label, x_pos - size[0] / 2.0, bottom - size[1] - 8, font_size=10)
+            size = _draw_text(self.canvas, label, 0, 0, font_size=tick_font_size)
+            _draw_text(self.canvas, label, x_pos - size[0] / 2.0, bottom - size[1] - 8, font_size=tick_font_size)
 
-    def _draw_axis_labels(self, left, bottom, width, top):
+    def _draw_axis_labels(self, left, bottom, width, top, axis_font_size):
         if self.x_axis_label:
-            size = _draw_text(self.canvas, self.x_axis_label, 0, 0, font_size=12)
-            _draw_text(self.canvas, self.x_axis_label, left + (width - size[0]) / 2.0, self.y + 10, font_size=12)
+            size = _draw_text(self.canvas, self.x_axis_label, 0, 0, font_size=axis_font_size)
+            _draw_text(self.canvas, self.x_axis_label, left + (width - size[0]) / 2.0, self.y + 10, font_size=axis_font_size)
         if self.y_axis_label:
-            _draw_text(self.canvas, self.y_axis_label, left, top + 8, font_size=12)
+            _draw_text(self.canvas, self.y_axis_label, left, top + 8, font_size=axis_font_size)
 
     def _build_legend_rows(self) -> list[list[dict]]:
         if not self.show_legend:
@@ -448,7 +463,7 @@ class MultiSeriesChart(Widget):
         max_width = max(120.0, self.width - 120.0)
         for item in self.series:
             label = str(item.get("name", "Serie"))
-            texture = _text_texture(label, font_size=11)
+            texture = _text_texture(label, font_size=13)
             item_width = 26 + texture.size[0]
             if rows[-1] and current_width + item_width > max_width:
                 rows.append([])
@@ -457,8 +472,8 @@ class MultiSeriesChart(Widget):
             current_width += item_width + 12
         return [row for row in rows if row]
 
-    def _draw_legend(self, left, baseline_y, width):
-        y_cursor = baseline_y + (len(self._legend_rows) - 1) * 18
+    def _draw_legend(self, left, baseline_y, width, legend_font_size, legend_row_height):
+        y_cursor = baseline_y + (len(self._legend_rows) - 1) * legend_row_height
         for row in self._legend_rows:
             cursor_x = left
             for item in row:
@@ -466,9 +481,9 @@ class MultiSeriesChart(Widget):
                 with self.canvas:
                     Color(*rgba)
                     Line(points=[cursor_x, y_cursor + 7, cursor_x + 14, y_cursor + 7], width=2)
-                _draw_text(self.canvas, item["name"], cursor_x + 18, y_cursor, font_size=11)
+                _draw_text(self.canvas, item["name"], cursor_x + 18, y_cursor, font_size=legend_font_size)
                 cursor_x += item["width"] + 12
-            y_cursor -= 18
+            y_cursor -= legend_row_height
 
     def _draw_line_series(self, left, bottom, width, height, min_x, max_x, min_y, max_y):
         for item in self.series:
@@ -478,7 +493,8 @@ class MultiSeriesChart(Widget):
                 for x_value, y_value in item.get("points", [])
                 if min_x <= x_value <= max_x and min_y <= y_value <= max_y
             ]
-            visible_points = _downsample_points(visible_points, int(self.max_points))
+            effective_max_points = max(int(self.max_points), int(self.max_points * max(1.0, self.zoom_factor)))
+            visible_points = _downsample_points(visible_points, effective_max_points)
             chart_points = []
             for x_value, y_value in visible_points:
                 x_pos = left + ((x_value - min_x) / (max_x - min_x)) * width
@@ -518,6 +534,33 @@ class MultiSeriesChart(Widget):
             return str(index + 1)
         x_value = points[index][0]
         return _format_tick(x_value)
+
+    def _line_ticks(self, min_x: float, max_x: float) -> list[float]:
+        if not self.x_tick_labels:
+            return _nice_ticks(min_x, max_x, target_count=5)
+        max_index = len(self.x_tick_labels) - 1
+        if max_index < 0:
+            return []
+        start = max(0, int(math.floor(min_x)))
+        end = min(max_index, int(math.ceil(max_x)))
+        labelled = [float(idx) for idx in range(start, end + 1) if str(self.x_tick_labels[idx]).strip()]
+        if not labelled:
+            labelled = [float(start), float(end)] if end > start else [float(start)]
+        if len(labelled) > 8:
+            step = max(1, int(math.ceil(len(labelled) / 6)))
+            reduced = labelled[::step]
+            if reduced[-1] != labelled[-1]:
+                reduced.append(labelled[-1])
+            return reduced
+        return labelled
+
+    def _line_tick_label(self, tick: float) -> str:
+        if not self.x_tick_labels:
+            return _format_tick(tick)
+        index = int(round(tick))
+        if 0 <= index < len(self.x_tick_labels):
+            return str(self.x_tick_labels[index])
+        return ""
 
     def _draw_bar_series(self, left, bottom, width, height, min_x, max_x, min_y, max_y):
         if not self.series:
@@ -574,10 +617,13 @@ class PieChartWidget(Widget):
             return
 
         legend_rows = len(self.segments)
-        legend_height = 18 * legend_rows + 6
-        pie_diameter = min(self.width * 0.8, max(72.0, self.height - legend_height - 14))
+        legend_font_size = 15
+        percentage_font_size = 17
+        total_font_size = 17
+        legend_height = 22 * legend_rows + 10
+        pie_diameter = min(self.width * 0.72, max(96.0, self.height - legend_height - 22))
         center_x = self.center_x
-        center_y = self.y + legend_height + pie_diameter / 2 + 10
+        center_y = self.y + legend_height + pie_diameter / 2 + 14
         rect = (center_x - pie_diameter / 2, center_y - pie_diameter / 2, pie_diameter, pie_diameter)
 
         start_angle = 0.0
@@ -601,30 +647,30 @@ class PieChartWidget(Widget):
                 text = f"{percentage:.0f}%"
                 luminance = rgba[0] * 0.299 + rgba[1] * 0.587 + rgba[2] * 0.114
                 text_color = (0.08, 0.08, 0.08, 1.0) if luminance > 0.72 else (1, 1, 1, 1)
-                size = _draw_text(self.canvas, text, 0, 0, color=text_color, font_size=14)
+                size = _draw_text(self.canvas, text, 0, 0, color=text_color, font_size=percentage_font_size)
                 _draw_text(
                     self.canvas,
                     text,
                     label_x - size[0] / 2.0,
                     label_y - size[1] / 2.0,
                     color=text_color,
-                    font_size=14,
+                    font_size=percentage_font_size,
                 )
 
             with self.canvas:
                 Color(*rgba)
                 Ellipse(pos=(self.x + 14, legend_y + 3), size=(10, 10))
             legend_text = f"{segment.get('label', 'Dato')}: {int(value)} ({percentage:.0f}%)"
-            _draw_text(self.canvas, legend_text, self.x + 30, legend_y, color=rgba, font_size=13)
-            legend_y -= 18
+            _draw_text(self.canvas, legend_text, self.x + 30, legend_y, color=rgba, font_size=legend_font_size)
+            legend_y -= 22
             start_angle += sweep
 
         with self.canvas:
             Color(1, 1, 1, 1)
             inner = pie_diameter * 0.42
             Ellipse(pos=(center_x - inner / 2, center_y - inner / 2), size=(inner, inner))
-        total_size = _draw_text(self.canvas, str(int(total)), 0, 0, font_size=14)
-        _draw_text(self.canvas, str(int(total)), center_x - total_size[0] / 2.0, center_y - total_size[1] / 2.0, font_size=14)
+        total_size = _draw_text(self.canvas, str(int(total)), 0, 0, font_size=total_font_size)
+        _draw_text(self.canvas, str(int(total)), center_x - total_size[0] / 2.0, center_y - total_size[1] / 2.0, font_size=total_font_size)
 
 
 def _format_tick(value: float) -> str:

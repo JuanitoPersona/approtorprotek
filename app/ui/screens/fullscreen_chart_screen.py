@@ -48,6 +48,8 @@ class FullscreenChartScreen(MDScreen):
         chart_mode: str = "line",
         show_legend: bool = True,
         show_points: bool = False,
+        x_tick_labels: list[str] | None = None,
+        allow_point_deletion: bool = False,
         footer: str = "",
     ):
         self.chart.load_series_for_view(series)
@@ -56,11 +58,17 @@ class FullscreenChartScreen(MDScreen):
         self.chart.chart_mode = chart_mode
         self.chart.show_legend = show_legend
         self.chart.show_points = show_points
+        self.chart.x_tick_labels = list(x_tick_labels or [])
         self.chart.open_fullscreen_callback = None
         self.chart.enable_touch_navigation = True
+        self.chart.allow_point_deletion = allow_point_deletion
         self.chart.delete_mode = False
         self.chart.clear_interaction_state()
         self.delete_button.text = "Excluir puntos"
+        self.delete_button.disabled = not allow_point_deletion
+        self.delete_button.opacity = 1 if allow_point_deletion else 0
+        self.restore_button.disabled = not allow_point_deletion
+        self.restore_button.opacity = 1 if allow_point_deletion else 0
         self.chart.reset_zoom()
         self._apply_responsive_layout()
 

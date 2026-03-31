@@ -39,6 +39,12 @@ class ConditionMonitoringScreen(MDScreen):
 
         self.selector_card = SectionCard("Variables")
         self.selector_grid = MDGridLayout(cols=1, adaptive_height=True, spacing=dp(10))
+        self.filter_row = MDBoxLayout(orientation="horizontal", adaptive_height=True, spacing=dp(8))
+        self.success_filter_button = MDRaisedButton(text="Solo exitosos", on_release=lambda *_: self._toggle_success_filter())
+        self.filter_hint = MDLabel(text="", adaptive_height=True, theme_text_color="Secondary")
+        self.filter_row.add_widget(self.success_filter_button)
+        self.selector_card.body.add_widget(self.filter_row)
+        self.selector_card.body.add_widget(self.filter_hint)
         self.main_selector_box = MDBoxLayout(orientation="vertical", adaptive_height=True, spacing=dp(6))
         self.main_add_button = MDRaisedButton(text="+ Principal", on_release=self._open_main_metric_menu)
         self.main_metrics_box = MDBoxLayout(orientation="vertical", adaptive_height=True, spacing=dp(6))
@@ -121,6 +127,10 @@ class ConditionMonitoringScreen(MDScreen):
         self.app_controller.state.remove_cm_metric(target, metric_name)
         self.refresh()
 
+    def _toggle_success_filter(self):
+        self.app_controller.state.toggle_cm_success_only()
+        self.refresh()
+
     def _render_selected_metrics(self, container, target: str, metrics: list[str]):
         container.clear_widgets()
         for metric_name in metrics:
@@ -140,6 +150,8 @@ class ConditionMonitoringScreen(MDScreen):
             chart_mode=self.main_chart.chart_mode,
             show_legend=self.main_chart.show_legend,
             show_points=self.main_chart.show_points,
+            x_tick_labels=list(self.main_chart.x_tick_labels),
+            allow_point_deletion=True,
             footer="Vista completa para inspeccionar varias metricas en paralelo con zoom tactil.",
         )
 
@@ -154,6 +166,8 @@ class ConditionMonitoringScreen(MDScreen):
             chart_mode=self.secondary_chart.chart_mode,
             show_legend=self.secondary_chart.show_legend,
             show_points=self.secondary_chart.show_points,
+            x_tick_labels=list(self.secondary_chart.x_tick_labels),
+            allow_point_deletion=True,
             footer="Vista completa para comparar metricas secundarias con pan y zoom tactil.",
         )
 
@@ -172,11 +186,28 @@ class ConditionMonitoringScreen(MDScreen):
 
         self._render_selected_metrics(self.main_metrics_box, "main", state.cm_main_metrics)
         self._render_selected_metrics(self.secondary_metrics_box, "secondary", state.cm_secondary_metrics)
+        filtered_indices = state.condition_monitoring_filtered_indices()
+        self.success_filter_button.text = "Mostrar todos" if state.cm_success_only else "Solo exitosos"
+        self.filter_hint.text = (
+            f"Mostrando {len(filtered_indices)} arranques exitosos."
+            if state.cm_success_only
+            else f"Mostrando {len(filtered_indices)} arranques del dataset."
+        )
 
         self.main_chart_card.title_label.text = state.cm_title(state.cm_main_metrics, "Variables principales")
         self.secondary_chart_card.title_label.text = state.cm_title(state.cm_secondary_metrics, "Variables secundarias")
+        x_axis_label = state.condition_monitoring_x_axis_label()
+        x_tick_labels = state.condition_monitoring_x_tick_labels()
+        self.main_chart.x_axis_label = x_axis_label
         self.main_chart.y_axis_label = state.cm_axis_label(state.cm_main_metrics)
+        self.main_chart.x_tick_labels = x_tick_labels
+        self.main_chart.allow_point_deletion = False
+        self.main_chart.max_points = max(600, len(filtered_indices) * 3)
+        self.secondary_chart.x_axis_label = x_axis_label
         self.secondary_chart.y_axis_label = state.cm_axis_label(state.cm_secondary_metrics)
+        self.secondary_chart.x_tick_labels = x_tick_labels
+        self.secondary_chart.allow_point_deletion = False
+        self.secondary_chart.max_points = max(600, len(filtered_indices) * 3)
 
         main_series = []
         main_messages = []

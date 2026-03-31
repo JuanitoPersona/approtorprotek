@@ -194,6 +194,8 @@ class RotorProtekMobileApp(MDApp):
         chart_mode: str = "line",
         show_legend: bool = True,
         show_points: bool = False,
+        x_tick_labels: list[str] | None = None,
+        allow_point_deletion: bool = False,
         footer: str = "",
     ):
         try:
@@ -206,6 +208,8 @@ class RotorProtekMobileApp(MDApp):
                 chart_mode=chart_mode,
                 show_legend=show_legend,
                 show_points=show_points,
+                x_tick_labels=x_tick_labels or [],
+                allow_point_deletion=allow_point_deletion,
                 footer=footer,
             )
             self.show_screen("fullscreen_chart")

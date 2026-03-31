@@ -15,6 +15,7 @@ from .historical import (
     successful_speed_resistance_ratio_pairs,
 )
 from .metrics import scalar_value
+from .metrics import is_successful_start
 from .models import StartupDataset, StartupRecord
 
 MAX_CSV_SIZE_BYTES = 64 * 1024 * 1024
@@ -28,6 +29,7 @@ class MobileAppState:
     selected_start_index: int = 0
     cm_main_metrics: List[str] = field(default_factory=lambda: ["Duración (s)"])
     cm_secondary_metrics: List[str] = field(default_factory=lambda: ["I máx (Arms)"])
+    cm_success_only: bool = False
     show_harmonics: bool = True
     validation_messages: List[str] = field(default_factory=list)
     last_load_ok: bool = False
@@ -56,6 +58,7 @@ class MobileAppState:
         self.selected_start_index = 0
         self.cm_main_metrics = ["Duración (s)"]
         self.cm_secondary_metrics = ["I máx (Arms)"]
+        self.cm_success_only = False
         self.show_harmonics = True
         self.last_load_ok = False
         self.load_progress = 0
@@ -189,7 +192,9 @@ class MobileAppState:
     def condition_monitoring_series(self, metric_name: str) -> tuple[list[tuple[float, float]], int]:
         points: list[tuple[float, float]] = []
         omitted = 0
-        for index, record in enumerate(self.records):
+        filtered_indices = self.condition_monitoring_filtered_indices()
+        for filtered_pos, index in enumerate(filtered_indices):
+            record = self.records[index]
             value = scalar_value(record.to_legacy(), metric_name)
             try:
                 numeric = float(value)
@@ -199,8 +204,49 @@ class MobileAppState:
             if np.isnan(numeric):
                 omitted += 1
                 continue
-            points.append((float(index + 1), numeric))
+            points.append((float(filtered_pos), numeric))
         return points, omitted
+
+    def toggle_cm_success_only(self):
+        self.cm_success_only = not self.cm_success_only
+
+    def condition_monitoring_filtered_indices(self) -> List[int]:
+        if not self.cm_success_only:
+            return list(range(len(self.records)))
+        return [index for index, record in enumerate(self.records) if is_successful_start(record.to_legacy())]
+
+    def condition_monitoring_x_axis_label(self) -> str:
+        indices = self.condition_monitoring_filtered_indices()
+        if not indices:
+            return "Arranque"
+        dated = [self.records[index].timestamp_dt for index in indices]
+        return "Mes" if all(dt is not None for dt in dated) else "Arranque"
+
+    def condition_monitoring_x_tick_labels(self) -> List[str]:
+        indices = self.condition_monitoring_filtered_indices()
+        if not indices:
+            return []
+        dated = [self.records[index].timestamp_dt for index in indices]
+        if not all(dt is not None for dt in dated):
+            return [f"A{index + 1}" for index in indices]
+
+        month_names = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+        labels: List[str] = []
+        last_month_key = None
+        last_year = None
+        for index in indices:
+            dt = self.records[index].timestamp_dt
+            month_key = (dt.year, dt.month)
+            if month_key != last_month_key:
+                month_label = month_names[dt.month - 1]
+                if last_year is None or dt.year != last_year:
+                    month_label = f"{month_label}\n{dt.year}"
+                labels.append(month_label)
+                last_month_key = month_key
+                last_year = dt.year
+            else:
+                labels.append("")
+        return labels
 
     def add_cm_metric(self, target: str, metric_name: str):
         metrics = self.cm_main_metrics if target == "main" else self.cm_secondary_metrics

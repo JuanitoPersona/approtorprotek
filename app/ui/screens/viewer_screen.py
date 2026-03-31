@@ -75,6 +75,7 @@ class ViewerScreen(MDScreen):
 
         self.signals_card = SectionCard("Senales principales")
         self.signal_chart = MultiSeriesChart(size_hint_y=None, height=dp(240), x_axis_label="Tiempo [s]", y_axis_label="% nominal")
+        self.signal_chart.max_points = 1400
         self.signal_chart.open_fullscreen_callback = self._open_signal_chart_fullscreen
         self.signals_card.body.add_widget(_chart_controls(self.signal_chart, self._open_signal_chart_fullscreen))
         self.signals_card.body.add_widget(self.signal_chart)
@@ -89,6 +90,7 @@ class ViewerScreen(MDScreen):
 
         self.torque_card = SectionCard("Par y carga")
         self.torque_chart = MultiSeriesChart(size_hint_y=None, height=dp(220), x_axis_label="Angulo [deg]", y_axis_label="% nominal")
+        self.torque_chart.max_points = 1000
         self.torque_chart.open_fullscreen_callback = self._open_torque_chart_fullscreen
         self.torque_card.body.add_widget(_chart_controls(self.torque_chart, self._open_torque_chart_fullscreen))
         self.torque_card.body.add_widget(self.torque_chart)
@@ -110,6 +112,7 @@ class ViewerScreen(MDScreen):
             chart_mode="bar",
             show_legend=False,
         )
+        self.harmonics_chart.max_points = 256
         self.harmonics_chart.open_fullscreen_callback = self._open_harmonics_chart_fullscreen
         self.harmonics_card.body.add_widget(_chart_controls(self.harmonics_chart, self._open_harmonics_chart_fullscreen))
         self.harmonics_info = MDLabel(text="", adaptive_height=True, theme_text_color="Secondary")
@@ -156,6 +159,7 @@ class ViewerScreen(MDScreen):
             chart_mode=self.signal_chart.chart_mode,
             show_legend=self.signal_chart.show_legend,
             show_points=self.signal_chart.show_points,
+            x_tick_labels=list(self.signal_chart.x_tick_labels),
             footer="Pinza para zoom y arrastra sobre la grafica para analizar velocidad, corriente y par.",
         )
 
@@ -169,6 +173,7 @@ class ViewerScreen(MDScreen):
             chart_mode=self.torque_chart.chart_mode,
             show_legend=self.torque_chart.show_legend,
             show_points=self.torque_chart.show_points,
+            x_tick_labels=list(self.torque_chart.x_tick_labels),
             footer="Usa la vista completa para comparar el par motor, la carga y la referencia congelada sin interferencia del scroll.",
         )
 
@@ -182,6 +187,7 @@ class ViewerScreen(MDScreen):
             chart_mode=self.harmonics_chart.chart_mode,
             show_legend=self.harmonics_chart.show_legend,
             show_points=self.harmonics_chart.show_points,
+            x_tick_labels=list(self.harmonics_chart.x_tick_labels),
             footer="La vista completa deja navegar el espectro con mas precision y sin competir con el scroll vertical.",
         )
 

@@ -4,7 +4,7 @@ from kivy.metrics import dp
 from kivy.uix.scrollview import ScrollView
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.gridlayout import MDGridLayout
-from kivymd.uix.button import MDFlatButton
+from kivymd.uix.button import MDFlatButton, MDRaisedButton
 from kivymd.uix.label import MDLabel
 from kivymd.uix.screen import MDScreen
 
@@ -36,7 +36,8 @@ class HistoricalScreen(MDScreen):
             y_axis_label="% de carga",
             show_points=True,
         )
-        self.load_card.body.add_widget(_zoom_controls(self.load_chart))
+        self.load_chart.open_fullscreen_callback = self._open_load_chart_fullscreen
+        self.load_card.body.add_widget(_chart_controls(self.load_chart, self._open_load_chart_fullscreen))
         self.load_info = MDLabel(adaptive_height=True, theme_text_color="Secondary")
         self.load_card.body.add_widget(self.load_chart)
         self.load_card.body.add_widget(MDLabel(text="Eje X: orden temporal de arranques | Eje Y: % de carga", adaptive_height=True, theme_text_color="Secondary"))
@@ -62,6 +63,19 @@ class HistoricalScreen(MDScreen):
         card.body.add_widget(chart)
         card.body.add_widget(info)
         return card, chart, info
+
+    def _open_load_chart_fullscreen(self, *_args):
+        self.app_controller.open_fullscreen_chart(
+            title="Historico de carga",
+            subtitle="Evolucion temporal del porcentaje de carga.",
+            series=list(self.load_chart.series),
+            x_axis_label=self.load_chart.x_axis_label,
+            y_axis_label=self.load_chart.y_axis_label,
+            chart_mode=self.load_chart.chart_mode,
+            show_legend=self.load_chart.show_legend,
+            show_points=self.load_chart.show_points,
+            footer="En pantalla completa el gesto tactil no compite con el scroll del historico.",
+        )
 
     def refresh(self):
         state = self.app_controller.state
@@ -123,9 +137,10 @@ class HistoricalScreen(MDScreen):
         )
 
 
-def _zoom_controls(chart):
+def _chart_controls(chart, fullscreen_callback):
     row = MDBoxLayout(orientation="horizontal", adaptive_height=True, spacing=dp(8))
     row.add_widget(MDFlatButton(text="Zoom -", on_release=lambda *_: chart.zoom_out()))
     row.add_widget(MDFlatButton(text="Reset", on_release=lambda *_: chart.reset_zoom()))
     row.add_widget(MDFlatButton(text="Zoom +", on_release=lambda *_: chart.zoom_in()))
+    row.add_widget(MDRaisedButton(text="Pantalla completa", on_release=fullscreen_callback))
     return row

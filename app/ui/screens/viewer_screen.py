@@ -69,7 +69,8 @@ class ViewerScreen(MDScreen):
 
         self.signals_card = SectionCard("Senales principales")
         self.signal_chart = MultiSeriesChart(size_hint_y=None, height=dp(240), x_axis_label="Tiempo [s]", y_axis_label="% nominal")
-        self.signals_card.body.add_widget(_zoom_controls(self.signal_chart))
+        self.signal_chart.open_fullscreen_callback = self._open_signal_chart_fullscreen
+        self.signals_card.body.add_widget(_chart_controls(self.signal_chart, self._open_signal_chart_fullscreen))
         self.signals_card.body.add_widget(self.signal_chart)
         self.signals_card.body.add_widget(
             MDLabel(
@@ -82,7 +83,8 @@ class ViewerScreen(MDScreen):
 
         self.torque_card = SectionCard("Par y carga")
         self.torque_chart = MultiSeriesChart(size_hint_y=None, height=dp(220), x_axis_label="Angulo [deg]", y_axis_label="% nominal")
-        self.torque_card.body.add_widget(_zoom_controls(self.torque_chart))
+        self.torque_chart.open_fullscreen_callback = self._open_torque_chart_fullscreen
+        self.torque_card.body.add_widget(_chart_controls(self.torque_chart, self._open_torque_chart_fullscreen))
         self.torque_card.body.add_widget(self.torque_chart)
         self.torque_card.body.add_widget(
             MDLabel(
@@ -102,7 +104,8 @@ class ViewerScreen(MDScreen):
             chart_mode="bar",
             show_legend=False,
         )
-        self.harmonics_card.body.add_widget(_zoom_controls(self.harmonics_chart))
+        self.harmonics_chart.open_fullscreen_callback = self._open_harmonics_chart_fullscreen
+        self.harmonics_card.body.add_widget(_chart_controls(self.harmonics_chart, self._open_harmonics_chart_fullscreen))
         self.harmonics_info = MDLabel(text="", adaptive_height=True, theme_text_color="Secondary")
         self.harmonics_card.body.add_widget(self.harmonics_chart)
         self.harmonics_card.body.add_widget(self.harmonics_info)
@@ -134,6 +137,45 @@ class ViewerScreen(MDScreen):
     def _toggle_harmonics(self, *_args):
         self.app_controller.state.show_harmonics = not self.app_controller.state.show_harmonics
         self.refresh()
+
+    def _open_signal_chart_fullscreen(self, *_args):
+        self.app_controller.open_fullscreen_chart(
+            title="Senales principales",
+            subtitle="Vista ampliada del arranque activo.",
+            series=list(self.signal_chart.series),
+            x_axis_label=self.signal_chart.x_axis_label,
+            y_axis_label=self.signal_chart.y_axis_label,
+            chart_mode=self.signal_chart.chart_mode,
+            show_legend=self.signal_chart.show_legend,
+            show_points=self.signal_chart.show_points,
+            footer="Pinza para zoom y arrastra sobre la grafica para analizar velocidad, corriente y par.",
+        )
+
+    def _open_torque_chart_fullscreen(self, *_args):
+        self.app_controller.open_fullscreen_chart(
+            title="Par y carga",
+            subtitle="Vista ampliada de la relacion angular del arranque.",
+            series=list(self.torque_chart.series),
+            x_axis_label=self.torque_chart.x_axis_label,
+            y_axis_label=self.torque_chart.y_axis_label,
+            chart_mode=self.torque_chart.chart_mode,
+            show_legend=self.torque_chart.show_legend,
+            show_points=self.torque_chart.show_points,
+            footer="Usa la vista completa para comparar el par motor, la carga y la referencia congelada sin interferencia del scroll.",
+        )
+
+    def _open_harmonics_chart_fullscreen(self, *_args):
+        self.app_controller.open_fullscreen_chart(
+            title="Armonicos",
+            subtitle="Vista ampliada del espectro del arranque activo.",
+            series=list(self.harmonics_chart.series),
+            x_axis_label=self.harmonics_chart.x_axis_label,
+            y_axis_label=self.harmonics_chart.y_axis_label,
+            chart_mode=self.harmonics_chart.chart_mode,
+            show_legend=self.harmonics_chart.show_legend,
+            show_points=self.harmonics_chart.show_points,
+            footer="La vista completa deja navegar el espectro con mas precision y sin competir con el scroll vertical.",
+        )
 
     def refresh(self):
         state = self.app_controller.state
@@ -271,9 +313,10 @@ def _safe_float(value):
         return np.nan
 
 
-def _zoom_controls(chart):
+def _chart_controls(chart, fullscreen_callback):
     row = MDBoxLayout(orientation="horizontal", adaptive_height=True, spacing=dp(8))
     row.add_widget(MDFlatButton(text="Zoom -", on_release=lambda *_: chart.zoom_out()))
     row.add_widget(MDFlatButton(text="Reset", on_release=lambda *_: chart.reset_zoom()))
     row.add_widget(MDFlatButton(text="Zoom +", on_release=lambda *_: chart.zoom_in()))
+    row.add_widget(MDRaisedButton(text="Pantalla completa", on_release=fullscreen_callback))
     return row

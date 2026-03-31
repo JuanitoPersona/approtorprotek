@@ -4,7 +4,7 @@ import math
 
 from kivy.core.text import Label as CoreLabel
 from kivy.graphics import Color, Ellipse, Line, Rectangle
-from kivy.properties import BooleanProperty, ListProperty, NumericProperty, StringProperty
+from kivy.properties import BooleanProperty, ListProperty, NumericProperty, ObjectProperty, StringProperty
 from kivy.uix.widget import Widget
 
 
@@ -24,7 +24,7 @@ def _text_texture(text: str, color=(0.2, 0.2, 0.2, 1.0), font_size: int = 12):
 def _draw_text(canvas, text: str, x: float, y: float, color=(0.2, 0.2, 0.2, 1.0), font_size: int = 12):
     texture = _text_texture(text, color=color, font_size=font_size)
     with canvas:
-        Color(1, 1, 1, 0)
+        Color(1, 1, 1, 1)
         Rectangle(texture=texture, pos=(x, y), size=texture.size)
     return texture.size
 
@@ -94,6 +94,7 @@ class MultiSeriesChart(Widget):
     pan_y = NumericProperty(0.5)
     chart_mode = StringProperty("line")
     show_points = BooleanProperty(False)
+    open_fullscreen_callback = ObjectProperty(None, allownone=True)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -143,6 +144,8 @@ class MultiSeriesChart(Widget):
                 self._gesture_start_distance = self._current_touch_distance()
                 self._gesture_start_zoom = self.zoom_factor
             if getattr(touch, "is_double_tap", False):
+                if callable(self.open_fullscreen_callback):
+                    self.open_fullscreen_callback()
                 self.reset_zoom()
             return True
         return super().on_touch_down(touch)

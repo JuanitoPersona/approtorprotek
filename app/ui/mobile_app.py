@@ -16,6 +16,7 @@ from kivymd.uix.label import MDLabel
 from ..android_file_picker import AndroidCsvPicker, is_android_runtime
 from ..mobile_state import MobileAppState
 from .screens.condition_monitoring_screen import ConditionMonitoringScreen
+from .screens.fullscreen_chart_screen import FullscreenChartScreen
 from .screens.historical_screen import HistoricalScreen
 from .screens.import_screen import ImportScreen
 from .screens.viewer_screen import ViewerScreen
@@ -31,6 +32,7 @@ class RotorProtekMobileApp(MDApp):
         self.android_picker = None
         self._loading_csv = False
         self._last_progress_percent = -1
+        self._previous_screen = "import"
 
         self.file_manager = MDFileManager(exit_manager=self.close_file_manager, select_path=self._select_file_from_desktop, preview=False)
         if is_android_runtime():
@@ -71,7 +73,8 @@ class RotorProtekMobileApp(MDApp):
         self.viewer_screen = ViewerScreen(self)
         self.cm_screen = ConditionMonitoringScreen(self)
         self.historical_screen = HistoricalScreen(self)
-        for screen in (self.import_screen, self.viewer_screen, self.cm_screen, self.historical_screen):
+        self.fullscreen_chart_screen = FullscreenChartScreen(self)
+        for screen in (self.import_screen, self.viewer_screen, self.cm_screen, self.historical_screen, self.fullscreen_chart_screen):
             self.screen_manager.add_widget(screen)
         root.add_widget(self.screen_manager)
 
@@ -170,7 +173,40 @@ class RotorProtekMobileApp(MDApp):
             return
         if name in ("condition_monitoring", "historical") and not self.state.is_multi:
             return
+        if name != "fullscreen_chart":
+            self._previous_screen = name
         self.screen_manager.current = name
+        self._refresh_active_screen()
+
+    def open_fullscreen_chart(
+        self,
+        *,
+        title: str,
+        subtitle: str,
+        series: list[dict],
+        x_axis_label: str,
+        y_axis_label: str,
+        chart_mode: str = "line",
+        show_legend: bool = True,
+        show_points: bool = False,
+        footer: str = "",
+    ):
+        self.fullscreen_chart_screen.apply_chart(
+            title=title,
+            subtitle=subtitle,
+            series=series,
+            x_axis_label=x_axis_label,
+            y_axis_label=y_axis_label,
+            chart_mode=chart_mode,
+            show_legend=show_legend,
+            show_points=show_points,
+            footer=footer,
+        )
+        self.screen_manager.current = "fullscreen_chart"
+
+    def close_fullscreen_chart(self):
+        target = self._previous_screen if self._previous_screen in {"import", "viewer", "condition_monitoring", "historical"} else "viewer"
+        self.screen_manager.current = target
         self._refresh_active_screen()
 
     def refresh_ui(self):
@@ -194,5 +230,7 @@ class RotorProtekMobileApp(MDApp):
             self.cm_screen.refresh()
         elif current == "historical":
             self.historical_screen.refresh()
+        elif current == "fullscreen_chart":
+            pass
         else:
             self.import_screen.refresh()

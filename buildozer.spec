@@ -6,12 +6,12 @@ source.dir = .
 source.include_exts = py,kv,png,jpg,jpeg,ttf,ico,csv,xlsx
 source.exclude_dirs = .git,.github,build,old,__pycache__
 source.exclude_patterns = *.pyc,*.pyo,allstarts.csv,allstarts_lemona.csv,tmp_*.csv
-version = 0.1.7
+version = 0.1.8
 icon.filename = logo_app.png
 
 requirements = python3,kivy==2.3.0,kivymd==1.2.0,numpy,pyjnius,openpyxl
 
-orientation = portrait
+orientation = all
 fullscreen = 0
 
 [buildozer]

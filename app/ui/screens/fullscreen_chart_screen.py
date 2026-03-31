@@ -40,6 +40,8 @@ class FullscreenChartScreen(MDScreen):
         )
         root.add_widget(self.footer_label)
         self.add_widget(root)
+        self.bind(size=lambda *_: self._apply_responsive_layout())
+        self._apply_responsive_layout()
 
     def apply_chart(
         self,
@@ -65,3 +67,8 @@ class FullscreenChartScreen(MDScreen):
         self.chart.open_fullscreen_callback = None
         self.chart.reset_zoom()
         self.footer_label.text = footer or "Pinza para zoom, arrastra para navegar y usa Reset para volver al encuadre inicial."
+        self._apply_responsive_layout()
+
+    def _apply_responsive_layout(self):
+        landscape = self.width > self.height and self.width > dp(700)
+        self.chart.stroke_width = 2.2 if landscape else 1.8

@@ -110,6 +110,8 @@ class ViewerScreen(MDScreen):
         self.harmonics_card.body.add_widget(self.harmonics_chart)
         self.harmonics_card.body.add_widget(self.harmonics_info)
         self.content.add_widget(self.harmonics_card)
+        self.bind(size=lambda *_: self._apply_responsive_layout())
+        self._apply_responsive_layout()
 
     def _open_start_menu(self, *_args):
         labels = self.app_controller.state.startup_labels()
@@ -189,6 +191,16 @@ class ViewerScreen(MDScreen):
         self._refresh_metrics(record)
         self._refresh_detail(record)
         self._refresh_charts(record)
+        self._apply_responsive_layout()
+
+    def _apply_responsive_layout(self):
+        landscape = self.width > self.height and self.width > dp(700)
+        self.header_meta.cols = 2 if landscape else 1
+        self.metrics_grid.cols = 4 if landscape else 2
+        self.secondary_metrics_grid.cols = 4 if landscape else 2
+        self.signal_chart.height = dp(300) if landscape else dp(240)
+        self.torque_chart.height = dp(280) if landscape else dp(220)
+        self.harmonics_chart.height = dp(260) if landscape else dp(220)
 
     def _clear_view(self):
         self.header_subtitle.text = "Carga un CSV para inspeccionar un arranque."

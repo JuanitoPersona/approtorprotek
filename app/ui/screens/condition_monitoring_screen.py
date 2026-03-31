@@ -73,6 +73,8 @@ class ConditionMonitoringScreen(MDScreen):
 
         self.empty_state = EmptyState("Condition Monitoring solo esta disponible si el CSV contiene multiples arranques.")
         self.content.add_widget(self.empty_state)
+        self.bind(size=lambda *_: self._apply_responsive_layout())
+        self._apply_responsive_layout()
 
     def _open_main_metric_menu(self, *_args):
         self.main_menu = self._build_metric_menu(self.main_add_button, "main")
@@ -183,6 +185,12 @@ class ConditionMonitoringScreen(MDScreen):
             secondary_messages.append(f"{metric_name}: {omitted} omitidos" if omitted else f"{metric_name}: OK")
         self.secondary_chart.series = secondary_series
         self.secondary_warning.text = " | ".join(secondary_messages)
+        self._apply_responsive_layout()
+
+    def _apply_responsive_layout(self):
+        landscape = self.width > self.height and self.width > dp(700)
+        self.main_chart.height = dp(300) if landscape else dp(240)
+        self.secondary_chart.height = dp(300) if landscape else dp(240)
 
 
 def _chart_controls(chart, fullscreen_callback):

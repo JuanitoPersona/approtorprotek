@@ -55,6 +55,8 @@ class HistoricalScreen(MDScreen):
 
         self.empty_state = EmptyState("Historico solo esta disponible cuando el CSV contiene multiples arranques.")
         self.content.add_widget(self.empty_state)
+        self.bind(size=lambda *_: self._apply_responsive_layout())
+        self._apply_responsive_layout()
 
     def _build_pie_card(self, title: str):
         card = SectionCard(title)
@@ -135,6 +137,16 @@ class HistoricalScreen(MDScreen):
             f"< 80 / > 130: {payload['current_ratios']['< 80 / > 130']:.0f}%. "
             f"Omitidos: {payload['omitted_current']}."
         )
+        self._apply_responsive_layout()
+
+    def _apply_responsive_layout(self):
+        landscape = self.width > self.height and self.width > dp(700)
+        self.pies_grid.cols = 3 if landscape else 1
+        self.load_chart.height = dp(300) if landscape else dp(230)
+        pie_height = dp(250) if landscape else dp(220)
+        self.success_chart.height = pie_height
+        self.cascade_chart.height = pie_height
+        self.current_chart.height = pie_height
 
 
 def _chart_controls(chart, fullscreen_callback):

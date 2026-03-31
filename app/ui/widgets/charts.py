@@ -108,7 +108,6 @@ class MultiSeriesChart(Widget):
         self._gesture_start_distance: float | None = None
         self._gesture_start_zoom = 1.0
         self._base_series: list[dict] = []
-        self._internal_series_update = False
         self.bind(
             pos=self._redraw,
             size=self._redraw,
@@ -123,8 +122,6 @@ class MultiSeriesChart(Widget):
             show_points=self._redraw,
             delete_mode=self._redraw,
         )
-        self.bind(series=self._on_series_changed)
-
     def zoom_in(self):
         self._set_zoom(self.zoom_factor * 1.35)
 
@@ -139,16 +136,12 @@ class MultiSeriesChart(Widget):
     def restore_points(self):
         if not self._base_series:
             return
-        self._internal_series_update = True
         self.series = deepcopy(self._base_series)
-        self._internal_series_update = False
 
     def toggle_delete_mode(self):
         self.delete_mode = not self.delete_mode
 
-    def _on_series_changed(self, *_args):
-        if self._internal_series_update:
-            return
+    def capture_restore_snapshot(self):
         self._base_series = deepcopy(self.series)
 
     def _set_zoom(self, value: float):
@@ -216,9 +209,7 @@ class MultiSeriesChart(Widget):
         if 0 <= point_index < len(points):
             points.pop(point_index)
             updated[series_index]["points"] = points
-            self._internal_series_update = True
             self.series = updated
-            self._internal_series_update = False
 
     def _nearest_point_reference(self, pos):
         if self.chart_mode == "bar":
@@ -251,12 +242,6 @@ class MultiSeriesChart(Widget):
                 if best is None or distance < best[2]:
                     best = (series_index, point_index, distance)
         return best
-        touch.ungrab(self)
-        self._active_touches.pop(id(touch), None)
-        if len(self._active_touches) < 2:
-            self._gesture_start_distance = None
-            self._gesture_start_zoom = self.zoom_factor
-        return True
 
     def _touch_in_plot(self, pos) -> bool:
         left, bottom, width, height = self._plot_rect

@@ -56,6 +56,7 @@ class FullscreenChartScreen(MDScreen):
         self.chart.open_fullscreen_callback = None
         self.chart.delete_mode = False
         self.delete_button.text = "Excluir puntos"
+        self.chart.capture_restore_snapshot()
         self.chart.reset_zoom()
         self._apply_responsive_layout()
 

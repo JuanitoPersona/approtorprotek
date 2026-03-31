@@ -4,6 +4,8 @@ import math
 
 from kivy.core.text import Label as CoreLabel
 from kivy.graphics import Color, Ellipse, Line, Rectangle
+from copy import deepcopy
+
 from kivy.properties import BooleanProperty, ListProperty, NumericProperty, ObjectProperty, StringProperty
 from kivy.uix.widget import Widget
 
@@ -94,6 +96,7 @@ class MultiSeriesChart(Widget):
     pan_y = NumericProperty(0.5)
     chart_mode = StringProperty("line")
     show_points = BooleanProperty(False)
+    delete_mode = BooleanProperty(False)
     open_fullscreen_callback = ObjectProperty(None, allownone=True)
 
     def __init__(self, **kwargs):
@@ -104,6 +107,8 @@ class MultiSeriesChart(Widget):
         self._active_touches: dict[int, tuple[float, float]] = {}
         self._gesture_start_distance: float | None = None
         self._gesture_start_zoom = 1.0
+        self._base_series: list[dict] = []
+        self._internal_series_update = False
         self.bind(
             pos=self._redraw,
             size=self._redraw,
@@ -116,7 +121,9 @@ class MultiSeriesChart(Widget):
             pan_y=self._redraw,
             chart_mode=self._redraw,
             show_points=self._redraw,
+            delete_mode=self._redraw,
         )
+        self.bind(series=self._on_series_changed)
 
     def zoom_in(self):
         self._set_zoom(self.zoom_factor * 1.35)
@@ -129,6 +136,21 @@ class MultiSeriesChart(Widget):
         self.pan_x = 0.5
         self.pan_y = 0.5
 
+    def restore_points(self):
+        if not self._base_series:
+            return
+        self._internal_series_update = True
+        self.series = deepcopy(self._base_series)
+        self._internal_series_update = False
+
+    def toggle_delete_mode(self):
+        self.delete_mode = not self.delete_mode
+
+    def _on_series_changed(self, *_args):
+        if self._internal_series_update:
+            return
+        self._base_series = deepcopy(self.series)
+
     def _set_zoom(self, value: float):
         self.zoom_factor = min(12.0, max(1.0, float(value)))
         self.pan_x = min(1.0, max(0.0, self.pan_x))
@@ -138,6 +160,9 @@ class MultiSeriesChart(Widget):
         if not self.collide_point(*touch.pos):
             return super().on_touch_down(touch)
         if self._touch_in_plot(touch.pos):
+            if self.delete_mode:
+                self._delete_nearest_point(touch.pos)
+                return True
             touch.grab(self)
             self._active_touches[id(touch)] = touch.pos
             if len(self._active_touches) == 2:
@@ -170,6 +195,62 @@ class MultiSeriesChart(Widget):
     def on_touch_up(self, touch):
         if touch.grab_current is not self:
             return super().on_touch_up(touch)
+        touch.ungrab(self)
+        self._active_touches.pop(id(touch), None)
+        if len(self._active_touches) < 2:
+            self._gesture_start_distance = None
+            self._gesture_start_zoom = self.zoom_factor
+        return True
+
+    def _delete_nearest_point(self, pos):
+        if not self.series:
+            return
+        nearest = self._nearest_point_reference(pos)
+        if nearest is None:
+            return
+        series_index, point_index, distance = nearest
+        if distance > 36:
+            return
+        updated = deepcopy(self.series)
+        points = list(updated[series_index].get("points", []))
+        if 0 <= point_index < len(points):
+            points.pop(point_index)
+            updated[series_index]["points"] = points
+            self._internal_series_update = True
+            self.series = updated
+            self._internal_series_update = False
+
+    def _nearest_point_reference(self, pos):
+        if self.chart_mode == "bar":
+            return self._nearest_bar_reference(pos)
+        left, bottom, width, height = self._plot_rect
+        min_x, max_x, min_y, max_y = self._current_view_bounds()
+        best = None
+        for series_index, item in enumerate(self.series):
+            for point_index, (x_value, y_value) in enumerate(item.get("points", [])):
+                if not (min_x <= x_value <= max_x and min_y <= y_value <= max_y):
+                    continue
+                x_pos = left + ((x_value - min_x) / (max_x - min_x)) * width
+                y_pos = bottom + ((y_value - min_y) / (max_y - min_y)) * height
+                distance = math.hypot(pos[0] - x_pos, pos[1] - y_pos)
+                if best is None or distance < best[2]:
+                    best = (series_index, point_index, distance)
+        return best
+
+    def _nearest_bar_reference(self, pos):
+        left, bottom, width, height = self._plot_rect
+        min_x, max_x, min_y, max_y = self._current_view_bounds()
+        best = None
+        for series_index, item in enumerate(self.series):
+            for point_index, (_x_value, y_value) in enumerate(item.get("points", [])):
+                if y_value != y_value:
+                    continue
+                x_center = left + (((point_index + 0.5) - min_x) / (max_x - min_x)) * width
+                y_pos = bottom + ((y_value - min_y) / (max_y - min_y)) * height
+                distance = math.hypot(pos[0] - x_center, pos[1] - y_pos)
+                if best is None or distance < best[2]:
+                    best = (series_index, point_index, distance)
+        return best
         touch.ungrab(self)
         self._active_touches.pop(id(touch), None)
         if len(self._active_touches) < 2:
@@ -237,6 +318,9 @@ class MultiSeriesChart(Widget):
         with self.canvas:
             Color(1, 1, 1, 1)
             Rectangle(pos=(left, bottom), size=(width, height))
+            if self.delete_mode:
+                Color(0.79, 0.14, 0.14, 0.12)
+                Rectangle(pos=(left, bottom), size=(width, height))
 
         self._draw_grid_and_ticks(left, bottom, width, height, min_x, max_x, min_y, max_y)
         self._draw_axis_labels(left, bottom, width, top)
@@ -500,21 +584,21 @@ class PieChartWidget(Widget):
                 text = f"{percentage:.0f}%"
                 luminance = rgba[0] * 0.299 + rgba[1] * 0.587 + rgba[2] * 0.114
                 text_color = (0.08, 0.08, 0.08, 1.0) if luminance > 0.72 else (1, 1, 1, 1)
-                size = _draw_text(self.canvas, text, 0, 0, color=text_color, font_size=12)
+                size = _draw_text(self.canvas, text, 0, 0, color=text_color, font_size=14)
                 _draw_text(
                     self.canvas,
                     text,
                     label_x - size[0] / 2.0,
                     label_y - size[1] / 2.0,
                     color=text_color,
-                    font_size=12,
+                    font_size=14,
                 )
 
             with self.canvas:
                 Color(*rgba)
                 Ellipse(pos=(self.x + 14, legend_y + 3), size=(10, 10))
             legend_text = f"{segment.get('label', 'Dato')}: {int(value)} ({percentage:.0f}%)"
-            _draw_text(self.canvas, legend_text, self.x + 30, legend_y, color=rgba, font_size=11)
+            _draw_text(self.canvas, legend_text, self.x + 30, legend_y, color=rgba, font_size=13)
             legend_y -= 18
             start_angle += sweep
 

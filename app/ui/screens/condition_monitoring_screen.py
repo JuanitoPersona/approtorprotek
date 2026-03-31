@@ -28,6 +28,8 @@ class ConditionMonitoringScreen(MDScreen):
         root.add_widget(MDLabel(text="Comparativa compacta y movil.", theme_text_color="Secondary", adaptive_height=True))
 
         scroll = ScrollView(do_scroll_x=False)
+        self.scroll = scroll
+        self.scroll.bind(scroll_y=lambda *_args: self.app_controller.handle_screen_scroll(self.scroll.scroll_y))
         self.content = MDBoxLayout(orientation="vertical", adaptive_height=True, spacing=dp(12), padding=(0, dp(8), 0, dp(24)))
         scroll.add_widget(self.content)
         root.add_widget(scroll)
@@ -195,8 +197,6 @@ class ConditionMonitoringScreen(MDScreen):
 
 def _chart_controls(chart, fullscreen_callback):
     row = MDBoxLayout(orientation="horizontal", adaptive_height=True, spacing=dp(8))
-    row.add_widget(MDFlatButton(text="Zoom -", on_release=lambda *_: chart.zoom_out()))
     row.add_widget(MDFlatButton(text="Reset", on_release=lambda *_: chart.reset_zoom()))
-    row.add_widget(MDFlatButton(text="Zoom +", on_release=lambda *_: chart.zoom_in()))
     row.add_widget(MDRaisedButton(text="Pantalla completa", on_release=fullscreen_callback))
     return row

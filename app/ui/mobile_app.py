@@ -44,6 +44,7 @@ class RotorProtekMobileApp(MDApp):
 
         root = MDBoxLayout(orientation="vertical", md_bg_color=APP_THEME["background"])
         header = MDBoxLayout(orientation="vertical", adaptive_height=True, padding=dp(16), spacing=dp(8))
+        self.header = header
         header.add_widget(MDLabel(text="RotorProtek", bold=True, font_style="H5", adaptive_height=True))
         self.file_label = MDLabel(text="Sin archivo cargado", adaptive_height=True, theme_text_color="Secondary")
         header.add_widget(self.file_label)
@@ -79,6 +80,7 @@ class RotorProtekMobileApp(MDApp):
         root.add_widget(self.screen_manager)
 
         self.refresh_ui()
+        self.set_header_visible(True)
         return root
 
     def open_file_manager(self):
@@ -176,6 +178,7 @@ class RotorProtekMobileApp(MDApp):
         if name != "fullscreen_chart":
             self._previous_screen = name
         self.screen_manager.current = name
+        self.set_header_visible(name != "fullscreen_chart")
         self._refresh_active_screen()
 
     def open_fullscreen_chart(
@@ -203,11 +206,27 @@ class RotorProtekMobileApp(MDApp):
             footer=footer,
         )
         self.screen_manager.current = "fullscreen_chart"
+        self.set_header_visible(False)
 
     def close_fullscreen_chart(self):
         target = self._previous_screen if self._previous_screen in {"import", "viewer", "condition_monitoring", "historical"} else "viewer"
         self.screen_manager.current = target
+        self.set_header_visible(True)
         self._refresh_active_screen()
+
+    def set_header_visible(self, visible: bool):
+        if not hasattr(self, "header"):
+            return
+        self.header.opacity = 1 if visible else 0
+        self.header.height = self.header.minimum_height if visible else 0
+
+    def handle_screen_scroll(self, scroll_y: float):
+        if getattr(self, "screen_manager", None) is None:
+            return
+        if self.screen_manager.current == "fullscreen_chart":
+            self.set_header_visible(False)
+            return
+        self.set_header_visible(scroll_y >= 0.985)
 
     def refresh_ui(self):
         self.file_label.text = self.state.current_file_label if self.state.current_file_label else "Sin archivo cargado"

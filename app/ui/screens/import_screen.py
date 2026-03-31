@@ -29,6 +29,8 @@ class ImportScreen(MDScreen):
         )
 
         scroll = ScrollView(do_scroll_x=False)
+        self.scroll = scroll
+        self.scroll.bind(scroll_y=lambda *_args: self.app_controller.handle_screen_scroll(self.scroll.scroll_y))
         self.body = MDBoxLayout(orientation="vertical", adaptive_height=True, spacing=dp(12), padding=(0, dp(8), 0, dp(24)))
         scroll.add_widget(self.body)
         root.add_widget(scroll)

@@ -26,8 +26,10 @@ class ConditionMonitoringScreen(MDScreen):
         self.secondary_menu = None
 
         root = MDBoxLayout(orientation="vertical", padding=dp(16), spacing=dp(12))
-        root.add_widget(MDLabel(text="Condition Monitoring", bold=True, font_style="H5", adaptive_height=True))
-        root.add_widget(MDLabel(text="Comparativa compacta y movil.", theme_text_color="Secondary", adaptive_height=True))
+        self.page_title = MDLabel(text="Condition Monitoring", bold=True, font_style="H5", adaptive_height=True)
+        self.page_subtitle = MDLabel(text="Comparativa compacta y movil.", theme_text_color="Secondary", adaptive_height=True)
+        root.add_widget(self.page_title)
+        root.add_widget(self.page_subtitle)
 
         scroll = ScrollView(do_scroll_x=False, effect_cls=ScrollEffect)
         self.scroll = scroll
@@ -173,6 +175,12 @@ class ConditionMonitoringScreen(MDScreen):
 
     def refresh(self):
         state = self.app_controller.state
+        self.page_title.text = self.app_controller.tr("cm_title")
+        self.page_subtitle.text = self.app_controller.tr("cm_subtitle")
+        self.selector_card.title_label.text = self.app_controller.tr("cm_variables")
+        self.success_filter_button.text = self.app_controller.tr("cm_show_all") if state.cm_success_only else self.app_controller.tr("cm_only_success")
+        self.main_add_button.text = self.app_controller.tr("cm_add_main")
+        self.secondary_add_button.text = self.app_controller.tr("cm_add_secondary")
         visible = state.is_multi
         for widget in (self.selector_card, self.main_chart_card, self.secondary_chart_card):
             widget.opacity = 1 if visible else 0
@@ -187,7 +195,7 @@ class ConditionMonitoringScreen(MDScreen):
         self._render_selected_metrics(self.main_metrics_box, "main", state.cm_main_metrics)
         self._render_selected_metrics(self.secondary_metrics_box, "secondary", state.cm_secondary_metrics)
         filtered_indices = state.condition_monitoring_filtered_indices()
-        self.success_filter_button.text = "Mostrar todos" if state.cm_success_only else "Solo exitosos"
+        self.success_filter_button.text = self.app_controller.tr("cm_show_all") if state.cm_success_only else self.app_controller.tr("cm_only_success")
         self.filter_hint.text = (
             f"Mostrando {len(filtered_indices)} arranques exitosos."
             if state.cm_success_only

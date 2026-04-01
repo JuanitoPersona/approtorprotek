@@ -20,8 +20,10 @@ class HistoricalScreen(MDScreen):
         self.name = "historical"
 
         root = MDBoxLayout(orientation="vertical", padding=dp(16), spacing=dp(12))
-        root.add_widget(MDLabel(text="Historico", bold=True, font_style="H5", adaptive_height=True))
-        root.add_widget(MDLabel(text="Tendencias historicas y clasificacion operativa.", theme_text_color="Secondary", adaptive_height=True))
+        self.page_title = MDLabel(text="Historico", bold=True, font_style="H5", adaptive_height=True)
+        self.page_subtitle = MDLabel(text="Tendencias historicas y clasificacion operativa.", theme_text_color="Secondary", adaptive_height=True)
+        root.add_widget(self.page_title)
+        root.add_widget(self.page_subtitle)
 
         scroll = ScrollView(do_scroll_x=False, effect_cls=ScrollEffect)
         self.scroll = scroll
@@ -84,6 +86,12 @@ class HistoricalScreen(MDScreen):
 
     def refresh(self):
         state = self.app_controller.state
+        self.page_title.text = self.app_controller.tr("history_title")
+        self.page_subtitle.text = self.app_controller.tr("history_subtitle")
+        self.load_card.title_label.text = self.app_controller.tr("history_load")
+        self.success_card.title_label.text = self.app_controller.tr("history_success")
+        self.cascade_card.title_label.text = self.app_controller.tr("history_cascade")
+        self.current_card.title_label.text = self.app_controller.tr("history_current")
         visible = state.is_multi
         for widget in (self.load_card, self.success_card, self.cascade_card, self.current_card):
             widget.opacity = 1 if visible else 0

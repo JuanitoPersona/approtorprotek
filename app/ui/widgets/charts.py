@@ -335,7 +335,7 @@ class MultiSeriesChart(Widget):
 
         left = self.x + 72
         right_padding = 18 + legend_width
-        bottom = self.y + (72 if fullscreen_like else 64)
+        bottom = self.y + (82 if self.chart_mode == "bar" else (72 if fullscreen_like else 64))
         top_padding = 26
         width = max(10.0, self.width - (left - self.x) - right_padding)
         height = max(10.0, self.height - (bottom - self.y) - top_padding)
@@ -536,9 +536,9 @@ class MultiSeriesChart(Widget):
         start = max(0, int(math.floor(min_x)))
         end = min(max_index, int(math.ceil(max_x)))
         count = end - start + 1
-        if count <= 6:
+        if count <= 4:
             return list(range(start, end + 1))
-        step = max(1, int(math.ceil(count / 5)))
+        step = max(1, int(math.ceil(count / 4)))
         ticks = list(range(start, end + 1, step))
         if ticks[-1] != end:
             ticks.append(end)

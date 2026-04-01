@@ -203,6 +203,16 @@ class ViewerScreen(MDScreen):
             self._clear_view()
             return
 
+        self.header_card.title_label.text = self.app_controller.tr("viewer_title")
+        self.selector_card.title_label.text = self.app_controller.tr("active_start")
+        self.selector_button.text = self.app_controller.tr("select_start")
+        self.metrics_card.title_label.text = self.app_controller.tr("quick_summary")
+        self.secondary_metrics_card.title_label.text = self.app_controller.tr("technical_metric")
+        self.detail_card.title_label.text = self.app_controller.tr("startup_detail")
+        self.signals_card.title_label.text = self.app_controller.tr("main_signals")
+        self.torque_card.title_label.text = self.app_controller.tr("torque_load")
+        self.params_table_card.title_label.text = self.app_controller.tr("params_table")
+        self.harmonics_card.title_label.text = self.app_controller.tr("harmonics")
         self._refresh_header(record)
         self._refresh_selector()
         self._refresh_metrics(record)
@@ -219,10 +229,12 @@ class ViewerScreen(MDScreen):
         self.secondary_metrics_grid.cols = 4 if landscape else 2
         self.signal_chart.height = dp(300) if landscape else dp(240)
         self.torque_chart.height = dp(280) if landscape else dp(220)
-        self.harmonics_chart.height = dp(260) if landscape else dp(220)
+        self.harmonics_chart.height = dp(280) if landscape else dp(240)
 
     def _clear_view(self):
         self.header_subtitle.text = "Carga un CSV para inspeccionar un arranque."
+        self.header_card.title_label.text = self.app_controller.tr("viewer_title")
+        self.selector_card.title_label.text = self.app_controller.tr("active_start")
         self.selector_button.text = "Sin arranque"
         self.selector_button.disabled = True
         self.selector_hint.text = "La vista se activara cuando exista un dataset valido."
@@ -258,7 +270,7 @@ class ViewerScreen(MDScreen):
             self.selector_hint.text = ""
             return
         self.selector_button.text = labels[index]
-        self.harmonics_toggle_button.text = "Mostrar armonicos" if not self.app_controller.state.show_harmonics else "Ocultar armonicos"
+        self.harmonics_toggle_button.text = self.app_controller.tr("show_harmonics") if not self.app_controller.state.show_harmonics else self.app_controller.tr("hide_harmonics")
         self.selector_hint.text = (
             "Selecciona el arranque activo que quieres inspeccionar en detalle."
             if multi
@@ -329,9 +341,9 @@ class ViewerScreen(MDScreen):
         self.harmonics_card.height = self.harmonics_card.minimum_height if visible else 0
         self.harmonics_chart.series = [{"name": "Armonicos", "color": "#2E7D32", "points": harmonic_points}] if visible else []
         self.harmonics_info.text = (
-            f"{len(harmonic_points)} armonicos validos detectados. Usa gesto de pinza para zoom y arrastre para navegar."
+            self.app_controller.tr("harmonics_info_count", count=len(harmonic_points))
             if visible and harmonic_points
-            else ("Este arranque no aporta armonicos validos para representar." if visible else "Armonicos ocultos.")
+            else (self.app_controller.tr("harmonics_info_none") if visible else self.app_controller.tr("harmonics_info_hidden"))
         )
 
 

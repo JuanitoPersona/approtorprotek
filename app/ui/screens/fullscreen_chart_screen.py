@@ -35,7 +35,7 @@ class FullscreenChartScreen(MDScreen):
 
     def _toggle_delete_mode(self):
         self.chart.toggle_delete_mode()
-        self.delete_button.text = "Salir excluir" if self.chart.delete_mode else "Excluir puntos"
+        self.delete_button.text = self.app_controller.tr("fullscreen_delete_exit") if self.chart.delete_mode else self.app_controller.tr("fullscreen_delete")
 
     def apply_chart(
         self,
@@ -52,6 +52,10 @@ class FullscreenChartScreen(MDScreen):
         allow_point_deletion: bool = False,
         footer: str = "",
     ):
+        self.reset_button.text = self.app_controller.tr("reset")
+        self.delete_button.text = self.app_controller.tr("fullscreen_delete")
+        self.restore_button.text = self.app_controller.tr("restore")
+        self.close_button.text = self.app_controller.tr("close")
         self.chart.load_series_for_view(series)
         self.chart.x_axis_label = x_axis_label
         self.chart.y_axis_label = y_axis_label
@@ -64,7 +68,7 @@ class FullscreenChartScreen(MDScreen):
         self.chart.allow_point_deletion = allow_point_deletion
         self.chart.delete_mode = False
         self.chart.clear_interaction_state()
-        self.delete_button.text = "Excluir puntos"
+        self.delete_button.text = self.app_controller.tr("fullscreen_delete")
         self.delete_button.disabled = not allow_point_deletion
         self.delete_button.opacity = 1 if allow_point_deletion else 0
         self.restore_button.disabled = not allow_point_deletion

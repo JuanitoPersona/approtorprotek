@@ -20,12 +20,14 @@ from .screens.fullscreen_chart_screen import FullscreenChartScreen
 from .screens.historical_screen import HistoricalScreen
 from .screens.import_screen import ImportScreen
 from .screens.viewer_screen import ViewerScreen
+from .i18n import tr
 from .theme import APP_THEME
 
 
 class RotorProtekMobileApp(MDApp):
     def build(self):
-        self.title = "RotorProtek"
+        self.language = "es"
+        self.title = self.tr("app_title")
         self.theme_cls.primary_palette = "Orange"
         self.theme_cls.theme_style = "Light"
         self.state = MobileAppState()
@@ -46,8 +48,9 @@ class RotorProtekMobileApp(MDApp):
         root = MDBoxLayout(orientation="vertical", md_bg_color=APP_THEME["background"])
         header = MDBoxLayout(orientation="vertical", adaptive_height=True, padding=dp(16), spacing=dp(8))
         self.header = header
-        header.add_widget(MDLabel(text="RotorProtek", bold=True, font_style="H5", adaptive_height=True))
-        self.file_label = MDLabel(text="Sin archivo cargado", adaptive_height=True, theme_text_color="Secondary")
+        self.app_title_label = MDLabel(text=self.tr("app_title"), bold=True, font_style="H5", adaptive_height=True)
+        header.add_widget(self.app_title_label)
+        self.file_label = MDLabel(text=self.tr("no_file_loaded"), adaptive_height=True, theme_text_color="Secondary")
         header.add_widget(self.file_label)
 
         nav_scroll = ScrollView(
@@ -58,10 +61,10 @@ class RotorProtekMobileApp(MDApp):
             bar_width=0,
         )
         nav = MDBoxLayout(orientation="horizontal", adaptive_width=True, spacing=dp(8))
-        self.import_button = MDRaisedButton(text="Archivo", on_release=lambda *_: self.show_screen("import"))
-        self.viewer_button = MDFlatButton(text="Arranque", on_release=lambda *_: self.show_screen("viewer"))
-        self.cm_button = MDFlatButton(text="CM", on_release=lambda *_: self.show_screen("condition_monitoring"))
-        self.history_button = MDFlatButton(text="Historico", on_release=lambda *_: self.show_screen("historical"))
+        self.import_button = MDRaisedButton(text=self.tr("nav_file"), on_release=lambda *_: self.show_screen("import"))
+        self.viewer_button = MDRaisedButton(text=self.tr("nav_viewer"), on_release=lambda *_: self.show_screen("viewer"))
+        self.cm_button = MDRaisedButton(text=self.tr("nav_cm"), on_release=lambda *_: self.show_screen("condition_monitoring"))
+        self.history_button = MDRaisedButton(text=self.tr("nav_history"), on_release=lambda *_: self.show_screen("historical"))
         for button in (self.import_button, self.viewer_button, self.cm_button, self.history_button):
             button.size_hint_x = None
             button.width = dp(88)
@@ -181,6 +184,7 @@ class RotorProtekMobileApp(MDApp):
             self._previous_screen = name
         self.screen_manager.current = name
         self.set_header_visible(name != "fullscreen_chart")
+        self._update_nav_active(name)
         self._refresh_active_screen()
 
     def open_fullscreen_chart(
@@ -248,10 +252,17 @@ class RotorProtekMobileApp(MDApp):
             self.set_header_visible(True)
 
     def refresh_ui(self):
-        self.file_label.text = self.state.current_file_label if self.state.current_file_label else "Sin archivo cargado"
+        self.title = self.tr("app_title")
+        self.app_title_label.text = self.tr("app_title")
+        self.file_label.text = self.state.current_file_label if self.state.current_file_label else self.tr("no_file_loaded")
+        self.import_button.text = self.tr("nav_file")
+        self.viewer_button.text = self.tr("nav_viewer")
+        self.cm_button.text = self.tr("nav_cm")
+        self.history_button.text = self.tr("nav_history")
         self._set_nav_visibility(self.viewer_button, self.state.has_dataset)
         self._set_nav_visibility(self.cm_button, self.state.is_multi)
         self._set_nav_visibility(self.history_button, self.state.is_multi)
+        self._update_nav_active(self.screen_manager.current if getattr(self, "screen_manager", None) else "import")
         self.import_screen.refresh()
         self._refresh_active_screen()
 
@@ -259,6 +270,30 @@ class RotorProtekMobileApp(MDApp):
         widget.disabled = not visible
         widget.opacity = 1 if visible else 0
         widget.width = dp(88) if visible else 0
+
+    def _update_nav_active(self, screen_name: str):
+        if screen_name == "fullscreen_chart":
+            screen_name = self._previous_screen
+        active_map = {
+            "import": self.import_button,
+            "viewer": self.viewer_button,
+            "condition_monitoring": self.cm_button,
+            "historical": self.history_button,
+        }
+        for screen, button in active_map.items():
+            active = screen == screen_name
+            button.md_bg_color = (0.925, 0.431, 0.0, 1.0) if active else (0.91, 0.91, 0.91, 1.0)
+            button.theme_text_color = "Custom"
+            button.text_color = (1, 1, 1, 1) if active else (0.25, 0.25, 0.25, 1)
+
+    def tr(self, key: str, **kwargs) -> str:
+        return tr(self.language, key, **kwargs)
+
+    def set_language(self, language: str):
+        if language not in {"es", "en"} or language == self.language:
+            return
+        self.language = language
+        self.refresh_ui()
 
     def _refresh_active_screen(self):
         current = self.screen_manager.current if getattr(self, "screen_manager", None) else "import"

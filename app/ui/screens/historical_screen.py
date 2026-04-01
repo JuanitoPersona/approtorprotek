@@ -42,7 +42,7 @@ class HistoricalScreen(MDScreen):
             show_points=True,
         )
         self.load_chart.open_fullscreen_callback = self._open_load_chart_fullscreen
-        self.load_card.body.add_widget(_chart_controls(self.load_chart, self._open_load_chart_fullscreen))
+        self.load_card.body.add_widget(_chart_controls(self.app_controller, self.load_chart, self._open_load_chart_fullscreen))
         self.load_info = MDLabel(adaptive_height=True, theme_text_color="Secondary")
         self.load_card.body.add_widget(self.load_chart)
         self.load_axis_info = MDLabel(text="", adaptive_height=True, theme_text_color="Secondary")
@@ -167,8 +167,8 @@ class HistoricalScreen(MDScreen):
         self.current_chart.height = pie_height
 
 
-def _chart_controls(chart, fullscreen_callback):
+def _chart_controls(app_controller, chart, fullscreen_callback):
     row = MDBoxLayout(orientation="horizontal", adaptive_height=True, spacing=dp(8))
-    row.add_widget(MDFlatButton(text="Reset", on_release=lambda *_: chart.reset_zoom()))
-    row.add_widget(MDRaisedButton(text="Pantalla completa", on_release=fullscreen_callback))
+    row.add_widget(MDFlatButton(text=app_controller.tr("reset"), on_release=lambda *_: chart.reset_zoom()))
+    row.add_widget(MDRaisedButton(text=app_controller.tr("fullscreen"), on_release=fullscreen_callback))
     return row

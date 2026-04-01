@@ -20,6 +20,8 @@ class SectionCard(MDCard):
 
     def apply_theme(self, palette: dict):
         self.md_bg_color = palette["panel"]
+        self.title_label.theme_text_color = "Custom"
+        self.title_label.text_color = palette["text"]
 
 
 class MetricCard(MDCard):
@@ -37,6 +39,10 @@ class MetricCard(MDCard):
 
     def apply_theme(self, palette: dict):
         self.md_bg_color = palette["panel_soft"]
+        self.label_widget.theme_text_color = "Custom"
+        self.label_widget.text_color = palette["subtext"]
+        self.value_widget.theme_text_color = "Custom"
+        self.value_widget.text_color = palette["text"]
 
 
 class EmptyState(MDCard):
@@ -50,3 +56,5 @@ class EmptyState(MDCard):
 
     def apply_theme(self, palette: dict):
         self.md_bg_color = palette["panel_muted"]
+        self.text_widget.theme_text_color = "Custom"
+        self.text_widget.text_color = palette["subtext"]

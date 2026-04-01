@@ -77,7 +77,7 @@ class ViewerScreen(MDScreen):
         self.signal_chart = MultiSeriesChart(size_hint_y=None, height=dp(240), x_axis_label="Tiempo [s]", y_axis_label="% nominal")
         self.signal_chart.max_points = 1400
         self.signal_chart.open_fullscreen_callback = self._open_signal_chart_fullscreen
-        self.signals_card.body.add_widget(_chart_controls(self.signal_chart, self._open_signal_chart_fullscreen))
+        self.signals_card.body.add_widget(_chart_controls(self.app_controller, self.signal_chart, self._open_signal_chart_fullscreen))
         self.signals_card.body.add_widget(self.signal_chart)
         self.signals_help_label = MDLabel(text="", adaptive_height=True, theme_text_color="Secondary")
         self.signals_card.body.add_widget(self.signals_help_label)
@@ -87,7 +87,7 @@ class ViewerScreen(MDScreen):
         self.torque_chart = MultiSeriesChart(size_hint_y=None, height=dp(220), x_axis_label="Angulo [deg]", y_axis_label="% nominal")
         self.torque_chart.max_points = 1000
         self.torque_chart.open_fullscreen_callback = self._open_torque_chart_fullscreen
-        self.torque_card.body.add_widget(_chart_controls(self.torque_chart, self._open_torque_chart_fullscreen))
+        self.torque_card.body.add_widget(_chart_controls(self.app_controller, self.torque_chart, self._open_torque_chart_fullscreen))
         self.torque_card.body.add_widget(self.torque_chart)
         self.torque_help_label = MDLabel(text="", adaptive_height=True, theme_text_color="Secondary")
         self.torque_card.body.add_widget(self.torque_help_label)
@@ -109,7 +109,7 @@ class ViewerScreen(MDScreen):
         )
         self.harmonics_chart.max_points = 256
         self.harmonics_chart.open_fullscreen_callback = self._open_harmonics_chart_fullscreen
-        self.harmonics_card.body.add_widget(_chart_controls(self.harmonics_chart, self._open_harmonics_chart_fullscreen))
+        self.harmonics_card.body.add_widget(_chart_controls(self.app_controller, self.harmonics_chart, self._open_harmonics_chart_fullscreen))
         self.harmonics_info = MDLabel(text="", adaptive_height=True, theme_text_color="Secondary")
         self.harmonics_card.body.add_widget(self.harmonics_chart)
         self.harmonics_card.body.add_widget(self.harmonics_info)
@@ -227,7 +227,7 @@ class ViewerScreen(MDScreen):
         self.header_subtitle.text = self.app_controller.tr("viewer_empty_subtitle")
         self.header_card.title_label.text = self.app_controller.tr("viewer_title")
         self.selector_card.title_label.text = self.app_controller.tr("active_start")
-        self.selector_button.text = "Sin arranque"
+        self.selector_button.text = self.app_controller.tr("summary_selection_none")
         self.selector_button.disabled = True
         self.selector_hint.text = self.app_controller.tr("viewer_empty_hint")
         self.metrics_grid.clear_widgets()
@@ -259,7 +259,7 @@ class ViewerScreen(MDScreen):
         self.selector_card.height = self.selector_card.minimum_height if multi else 0
         self.selector_button.disabled = not multi
         if not labels:
-            self.selector_button.text = "Sin arranque"
+            self.selector_button.text = self.app_controller.tr("summary_selection_none")
             self.selector_hint.text = ""
             return
         self.selector_button.text = labels[index]
@@ -337,6 +337,29 @@ class ViewerScreen(MDScreen):
             else (self.app_controller.tr("harmonics_info_none") if visible else self.app_controller.tr("harmonics_info_hidden"))
         )
 
+    def apply_theme(self, palette: dict):
+        self.md_bg_color = palette["background"]
+        self.header_title.theme_text_color = "Custom"
+        self.header_title.text_color = palette["text"]
+        for label in (
+            self.header_subtitle,
+            self.selector_hint,
+            self.signals_help_label,
+            self.torque_help_label,
+            self.harmonics_info,
+        ):
+            label.theme_text_color = "Custom"
+            label.text_color = palette["subtext"]
+        for child in self.detail_layout.children:
+            for subchild in child.children:
+                if hasattr(subchild, "theme_text_color"):
+                    subchild.theme_text_color = "Custom"
+                    subchild.text_color = palette["text"]
+        for child in self.params_table_grid.children:
+            if hasattr(child, "theme_text_color"):
+                child.theme_text_color = "Custom"
+                child.text_color = palette["text"]
+
 
 def _points(xs, ys):
     values = []
@@ -377,8 +400,8 @@ def _torque_load_geometry(record):
     return load_torque, motor_torque, angle_axis
 
 
-def _chart_controls(chart, fullscreen_callback):
+def _chart_controls(app_controller, chart, fullscreen_callback):
     row = MDBoxLayout(orientation="horizontal", adaptive_height=True, spacing=dp(8))
-    row.add_widget(MDFlatButton(text="Reset", on_release=lambda *_: chart.reset_zoom()))
-    row.add_widget(MDRaisedButton(text="Pantalla completa", on_release=fullscreen_callback))
+    row.add_widget(MDFlatButton(text=app_controller.tr("reset"), on_release=lambda *_: chart.reset_zoom()))
+    row.add_widget(MDRaisedButton(text=app_controller.tr("fullscreen"), on_release=fullscreen_callback))
     return row

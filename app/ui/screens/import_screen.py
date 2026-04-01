@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 
+from kivy.uix.behaviors import ButtonBehavior
 from kivy.effects.scroll import ScrollEffect
 from kivy.metrics import dp
 from kivy.uix.anchorlayout import AnchorLayout
@@ -16,6 +17,10 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.screen import MDScreen
 
 from ..widgets.cards import MetricCard, SectionCard
+
+
+class ClickableFlag(ButtonBehavior, Image):
+    pass
 
 
 class ImportScreen(MDScreen):
@@ -49,28 +54,31 @@ class ImportScreen(MDScreen):
         self.body.add_widget(self.file_card)
 
         self.language_card = SectionCard("Idioma")
-        language_row = MDGridLayout(cols=3, adaptive_height=True, spacing=dp(10))
+        language_row = MDGridLayout(cols=4, adaptive_height=True, spacing=dp(10))
         self.language_buttons = {}
+        self.language_flags = {}
         for code, image_name in (
             ("es", "lang_es.png"),
             ("en", "lang_en.png"),
             ("fr", "lang_fr.png"),
+            ("pt", "lang_pt.png"),
         ):
             box = MDBoxLayout(orientation="vertical", adaptive_height=True, spacing=dp(6))
-            image_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=dp(40))
-            image_anchor.add_widget(
-                Image(
+            image_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=dp(48))
+            flag = ClickableFlag(
                     source=os.path.join(assets_root, image_name),
                     size_hint=(None, None),
-                    size=(dp(34), dp(34)),
+                    size=(dp(42), dp(42)),
                     allow_stretch=True,
                     keep_ratio=True,
                 )
-            )
+            flag.bind(on_release=lambda *_args, lang=code: self.app_controller.set_language(lang))
+            self.language_flags[code] = flag
+            image_anchor.add_widget(flag)
             box.add_widget(image_anchor)
             button = MDFlatButton(text="", on_release=lambda *_args, lang=code: self.app_controller.set_language(lang))
             button.size_hint_x = None
-            button.width = dp(110)
+            button.width = dp(96)
             button.pos_hint = {"center_x": 0.5}
             self.language_buttons[code] = button
             box.add_widget(button)
@@ -128,6 +136,7 @@ class ImportScreen(MDScreen):
         self.language_buttons["es"].text = self.app_controller.tr("language_es")
         self.language_buttons["en"].text = self.app_controller.tr("language_en")
         self.language_buttons["fr"].text = self.app_controller.tr("language_fr")
+        self.language_buttons["pt"].text = self.app_controller.tr("language_pt")
         self.language_hint_label.text = self.app_controller.tr("language_hint")
         self._style_language_buttons()
         self.theme_card.title_label.text = self.app_controller.tr("theme_card")
@@ -170,6 +179,9 @@ class ImportScreen(MDScreen):
             button.md_bg_color = (0.925, 0.431, 0.0, 1.0) if selected else palette["inactive_button"]
             button.theme_text_color = "Custom"
             button.text_color = (1, 1, 1, 1) if selected else palette["inactive_text"]
+            flag = self.language_flags.get(code)
+            if flag is not None:
+                flag.opacity = 1.0 if selected else 0.88
 
     def _style_theme_buttons(self):
         palette = self.app_controller.palette()
@@ -179,3 +191,21 @@ class ImportScreen(MDScreen):
             button.md_bg_color = (0.925, 0.431, 0.0, 1.0) if selected else palette["inactive_button"]
             button.theme_text_color = "Custom"
             button.text_color = (1, 1, 1, 1) if selected else palette["inactive_text"]
+
+    def apply_theme(self, palette: dict):
+        self.md_bg_color = palette["background"]
+        for label in (
+            self.title_label,
+            self.file_name_label,
+            self.validation_label,
+        ):
+            label.theme_text_color = "Custom"
+            label.text_color = palette["text"]
+        for label in (
+            self.subtitle_label,
+            self.language_hint_label,
+            self.theme_hint_label,
+            self.progress_label,
+        ):
+            label.theme_text_color = "Custom"
+            label.text_color = palette["subtext"]

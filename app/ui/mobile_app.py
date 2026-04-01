@@ -5,6 +5,8 @@ from threading import Thread
 
 from kivy.clock import Clock
 from kivy.metrics import dp
+from kivy.uix.behaviors import ButtonBehavior
+from kivy.uix.image import Image
 from kivy.uix.screenmanager import FadeTransition, ScreenManager
 from kivy.uix.scrollview import ScrollView
 from kivymd.app import MDApp
@@ -23,6 +25,10 @@ from .screens.import_screen import ImportScreen
 from .screens.viewer_screen import ViewerScreen
 from .i18n import tr
 from .theme import get_theme
+
+
+class ClickableImage(ButtonBehavior, Image):
+    pass
 
 
 class RotorProtekMobileApp(MDApp):
@@ -256,7 +262,6 @@ class RotorProtekMobileApp(MDApp):
             self.set_header_visible(True)
 
     def refresh_ui(self):
-        self._apply_theme()
         self.title = self.tr("app_title")
         self.app_title_label.text = self.tr("app_title")
         self.file_label.text = self.state.current_file_label if self.state.current_file_label else self.tr("no_file_loaded")
@@ -270,6 +275,7 @@ class RotorProtekMobileApp(MDApp):
         self._update_nav_active(self.screen_manager.current if getattr(self, "screen_manager", None) else "import")
         self.import_screen.refresh()
         self._refresh_active_screen()
+        self._apply_theme()
 
     def _set_nav_visibility(self, widget, visible: bool):
         widget.disabled = not visible
@@ -304,7 +310,7 @@ class RotorProtekMobileApp(MDApp):
         return get_theme(self.dark_mode)
 
     def set_language(self, language: str):
-        if language not in {"es", "en", "fr"} or language == self.language:
+        if language not in {"es", "en", "fr", "pt"} or language == self.language:
             return
         self.language = language
         self.refresh_ui()

@@ -24,8 +24,9 @@ class ImportScreen(MDScreen):
         self.name = "import"
 
         root = MDBoxLayout(orientation="vertical", padding=dp(16), spacing=dp(12))
-        logo_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "logo_app.png")
-        root.add_widget(Image(source=logo_path, size_hint_y=None, height=dp(72), allow_stretch=True, keep_ratio=True))
+        assets_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        logo_path = os.path.join(assets_root, "logo_app_hd.png")
+        root.add_widget(Image(source=logo_path, size_hint_y=None, height=dp(88), allow_stretch=True, keep_ratio=True))
         self.title_label = MDLabel(text="", bold=True, font_style="H5", adaptive_height=True)
         self.subtitle_label = MDLabel(text="", theme_text_color="Secondary", adaptive_height=True)
         root.add_widget(self.title_label)
@@ -47,11 +48,27 @@ class ImportScreen(MDScreen):
         self.body.add_widget(self.file_card)
 
         self.language_card = SectionCard("Idioma")
-        language_row = MDBoxLayout(orientation="horizontal", adaptive_height=True, spacing=dp(8))
-        self.lang_es_button = MDFlatButton(text="", on_release=lambda *_: self.app_controller.set_language("es"))
-        self.lang_en_button = MDFlatButton(text="", on_release=lambda *_: self.app_controller.set_language("en"))
-        language_row.add_widget(self.lang_es_button)
-        language_row.add_widget(self.lang_en_button)
+        language_row = MDGridLayout(cols=3, adaptive_height=True, spacing=dp(10))
+        self.language_buttons = {}
+        for code, image_name in (
+            ("es", "lang_es.png"),
+            ("en", "lang_en.png"),
+            ("fr", "lang_fr.png"),
+        ):
+            box = MDBoxLayout(orientation="vertical", adaptive_height=True, spacing=dp(6))
+            box.add_widget(
+                Image(
+                    source=os.path.join(assets_root, image_name),
+                    size_hint_y=None,
+                    height=dp(34),
+                    allow_stretch=True,
+                    keep_ratio=True,
+                )
+            )
+            button = MDFlatButton(text="", on_release=lambda *_args, lang=code: self.app_controller.set_language(lang))
+            self.language_buttons[code] = button
+            box.add_widget(button)
+            language_row.add_widget(box)
         self.language_hint_label = MDLabel(text="", adaptive_height=True, theme_text_color="Secondary")
         self.language_card.body.add_widget(language_row)
         self.language_card.body.add_widget(self.language_hint_label)
@@ -79,8 +96,9 @@ class ImportScreen(MDScreen):
         self.file_name_label.text = state.current_file_label if state.current_file_label else self.app_controller.tr("no_file_loaded")
         self.select_button.text = self.app_controller.tr("select_file")
         self.language_card.title_label.text = self.app_controller.tr("language_card")
-        self.lang_es_button.text = self.app_controller.tr("language_es")
-        self.lang_en_button.text = self.app_controller.tr("language_en")
+        self.language_buttons["es"].text = self.app_controller.tr("language_es")
+        self.language_buttons["en"].text = self.app_controller.tr("language_en")
+        self.language_buttons["fr"].text = self.app_controller.tr("language_fr")
         self.language_hint_label.text = self.app_controller.tr("language_hint")
         self._style_language_buttons()
 
@@ -112,7 +130,7 @@ class ImportScreen(MDScreen):
 
     def _style_language_buttons(self):
         active = self.app_controller.language
-        for code, button in (("es", self.lang_es_button), ("en", self.lang_en_button)):
+        for code, button in self.language_buttons.items():
             selected = code == active
             button.md_bg_color = (0.925, 0.431, 0.0, 1.0) if selected else (0.91, 0.91, 0.91, 1.0)
             button.theme_text_color = "Custom"

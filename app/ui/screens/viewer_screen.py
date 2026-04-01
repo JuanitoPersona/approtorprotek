@@ -264,6 +264,7 @@ class ViewerScreen(MDScreen):
         multi = len(labels) > 1
         self.selector_card.opacity = 1 if multi else 0
         self.selector_card.disabled = not multi
+        self.selector_card.height = self.selector_card.minimum_height if multi else 0
         self.selector_button.disabled = not multi
         if not labels:
             self.selector_button.text = "Sin arranque"
@@ -314,9 +315,7 @@ class ViewerScreen(MDScreen):
         if dual_points:
             self.signal_chart.series.append({"name": "Corriente 2 motor", "color": "#1976D2", "points": dual_points})
 
-        load_torque = np.asarray(record.series.load_torque, dtype=float)
-        motor_torque = np.asarray(record.series.motor_torque, dtype=float)
-        angle_axis = np.linspace(0.0, 180.0, load_torque.size) if load_torque.size else np.array([])
+        load_torque, motor_torque, angle_axis = _torque_load_geometry(record)
         frozen_amp = scalar_value(record.to_legacy(), "Amp frz(%)")
         frozen_numeric = _safe_float(frozen_amp)
         frozen_curve = frozen_numeric * np.sin(np.radians(angle_axis)) if angle_axis.size and not np.isnan(frozen_numeric) else np.array([])
@@ -361,6 +360,29 @@ def _safe_float(value):
         return float(value)
     except Exception:
         return np.nan
+
+
+def _torque_load_geometry(record):
+    load_torque = np.asarray(record.series.load_torque, dtype=float)
+    motor_torque = np.asarray(record.series.motor_torque, dtype=float)
+
+    if load_torque.size == 0 and motor_torque.size == 0:
+        return load_torque, motor_torque, np.array([], dtype=float)
+
+    last_finite_index = -1
+    for array in (load_torque, motor_torque):
+        finite_indices = np.where(np.isfinite(array))[0]
+        if finite_indices.size:
+            last_finite_index = max(last_finite_index, int(finite_indices[-1]))
+
+    if last_finite_index >= 0:
+        end = last_finite_index + 1
+        load_torque = load_torque[:end]
+        motor_torque = motor_torque[:end]
+
+    point_count = max(load_torque.size, motor_torque.size)
+    angle_axis = np.linspace(0.0, 180.0, point_count) if point_count else np.array([], dtype=float)
+    return load_torque, motor_torque, angle_axis
 
 
 def _chart_controls(chart, fullscreen_callback):

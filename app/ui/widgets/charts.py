@@ -30,6 +30,10 @@ def _draw_text(canvas, text: str, x: float, y: float, color=(0.2, 0.2, 0.2, 1.0)
     return texture.size
 
 
+def _measure_text(text: str, color=(0.2, 0.2, 0.2, 1.0), font_size: int = 12):
+    return _text_texture(text, color=color, font_size=font_size).size
+
+
 def _downsample_points(points: list[tuple[float, float]], max_points: int) -> list[tuple[float, float]]:
     if max_points <= 0 or len(points) <= max_points:
         return points
@@ -335,7 +339,7 @@ class MultiSeriesChart(Widget):
 
         left = self.x + 72
         right_padding = 18 + legend_width
-        bottom = self.y + (82 if self.chart_mode == "bar" else (72 if fullscreen_like else 64))
+        bottom = self.y + (92 if self.chart_mode == "bar" else (72 if fullscreen_like else 64))
         top_padding = 26
         width = max(10.0, self.width - (left - self.x) - right_padding)
         height = max(10.0, self.height - (bottom - self.y) - top_padding)
@@ -437,13 +441,18 @@ class MultiSeriesChart(Widget):
                 Color(0.62, 0.62, 0.62, 1)
                 Line(points=[left - 4, y_pos, left, y_pos], width=1)
             label_text = _format_tick(value)
-            size = _draw_text(self.canvas, label_text, 0, 0, font_size=tick_font_size)
+            size = _measure_text(label_text, font_size=tick_font_size)
             _draw_text(self.canvas, label_text, left - size[0] - 8, y_pos - size[1] / 2.0, font_size=tick_font_size)
 
+        last_bar_label = None
         for tick in x_ticks:
             if self.chart_mode == "bar":
                 index = int(tick)
                 label = self._bar_tick_label(index)
+                if label == last_bar_label:
+                    label = ""
+                elif label:
+                    last_bar_label = label
                 x_pos = left + (((index + 0.5) - min_x) / (max_x - min_x)) * width
             else:
                 if tick < min_x - 1e-9 or tick > max_x + 1e-9:
@@ -457,12 +466,12 @@ class MultiSeriesChart(Widget):
                 Line(points=[x_pos, bottom, x_pos, bottom + height], width=1)
                 Color(0.62, 0.62, 0.62, 1)
                 Line(points=[x_pos, bottom, x_pos, bottom - 4], width=1)
-            size = _draw_text(self.canvas, label, 0, 0, font_size=tick_font_size)
+            size = _measure_text(label, font_size=tick_font_size)
             _draw_text(self.canvas, label, x_pos - size[0] / 2.0, bottom - size[1] - 8, font_size=tick_font_size)
 
     def _draw_axis_labels(self, left, bottom, width, top, axis_font_size):
         if self.x_axis_label:
-            size = _draw_text(self.canvas, self.x_axis_label, 0, 0, font_size=axis_font_size)
+            size = _measure_text(self.x_axis_label, font_size=axis_font_size)
             _draw_text(self.canvas, self.x_axis_label, left + (width - size[0]) / 2.0, self.y + 10, font_size=axis_font_size)
         if self.y_axis_label:
             _draw_text(self.canvas, self.y_axis_label, left, top + 8, font_size=axis_font_size)
@@ -666,7 +675,7 @@ class PieChartWidget(Widget):
                 text = f"{percentage:.0f}%"
                 luminance = rgba[0] * 0.299 + rgba[1] * 0.587 + rgba[2] * 0.114
                 text_color = (0.08, 0.08, 0.08, 1.0) if luminance > 0.72 else (1, 1, 1, 1)
-                size = _draw_text(self.canvas, text, 0, 0, color=text_color, font_size=percentage_font_size)
+                size = _measure_text(text, color=text_color, font_size=percentage_font_size)
                 _draw_text(
                     self.canvas,
                     text,
@@ -688,7 +697,7 @@ class PieChartWidget(Widget):
             Color(1, 1, 1, 1)
             inner = pie_diameter * 0.42
             Ellipse(pos=(center_x - inner / 2, center_y - inner / 2), size=(inner, inner))
-        total_size = _draw_text(self.canvas, str(int(total)), 0, 0, font_size=total_font_size)
+        total_size = _measure_text(str(int(total)), font_size=total_font_size)
         _draw_text(self.canvas, str(int(total)), center_x - total_size[0] / 2.0, center_y - total_size[1] / 2.0, font_size=total_font_size)
 
 

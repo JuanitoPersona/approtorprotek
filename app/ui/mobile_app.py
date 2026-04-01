@@ -290,7 +290,7 @@ class RotorProtekMobileApp(MDApp):
         return tr(self.language, key, **kwargs)
 
     def set_language(self, language: str):
-        if language not in {"es", "en"} or language == self.language:
+        if language not in {"es", "en", "fr"} or language == self.language:
             return
         self.language = language
         self.refresh_ui()

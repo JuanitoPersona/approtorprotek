@@ -142,6 +142,18 @@ def build_empty_series() -> StartupSeries:
     return StartupSeries()
 
 
+def _trim_arrays_to_last_finite(*arrays: np.ndarray) -> tuple[np.ndarray, ...]:
+    last_finite_index = -1
+    for array in arrays:
+        finite_indices = np.where(np.isfinite(array))[0]
+        if finite_indices.size:
+            last_finite_index = max(last_finite_index, int(finite_indices[-1]))
+    if last_finite_index < 0:
+        return arrays
+    end = last_finite_index + 1
+    return tuple(np.asarray(array[:end], dtype=float) for array in arrays)
+
+
 def validate_rows(rows: Sequence[Sequence[str]]) -> List[str]:
     issues: List[str] = []
     if not rows:
@@ -339,6 +351,18 @@ def parse_single_start_csv(rows: Sequence[Sequence[str]]) -> List[StartupRecord]
     series.harmonic_amp = np.array(series_columns["harmonic_amp"], dtype=float)
     series.harmonic_freq_hz = np.array(harmonic_rows, dtype=float)
     series.harmonic_freq_raw = np.array(harmonic_rows, dtype=float) * 0.5632
+
+    # Single-start exports often pad angular and harmonic columns with trailing blanks.
+    # Trim those tails so the mobile chart uses the same effective geometry as multi-start files.
+    (
+        series.load_torque,
+        series.motor_torque,
+    ) = _trim_arrays_to_last_finite(series.load_torque, series.motor_torque)
+    (
+        series.harmonic_amp,
+        series.harmonic_freq_hz,
+        series.harmonic_freq_raw,
+    ) = _trim_arrays_to_last_finite(series.harmonic_amp, series.harmonic_freq_hz, series.harmonic_freq_raw)
 
     return [
         StartupRecord(

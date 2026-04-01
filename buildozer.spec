@@ -6,9 +6,9 @@ source.dir = .
 source.include_exts = py,kv,png,jpg,jpeg,ttf,ico,csv,xlsx
 source.exclude_dirs = .git,.github,build,old,__pycache__
 source.exclude_patterns = *.pyc,*.pyo,allstarts.csv,allstarts_lemona.csv,tmp_*.csv
-version = 0.1.15
-icon.filename = logo_app.png
-presplash.filename = logo_app.png
+version = 0.1.16
+icon.filename = logo_app_hd.png
+presplash.filename = logo_app_hd.png
 
 requirements = python3,kivy==2.3.0,kivymd==1.2.0,numpy,pyjnius,openpyxl
 

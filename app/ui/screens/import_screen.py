@@ -147,15 +147,15 @@ class ImportScreen(MDScreen):
 
         self.summary_grid.clear_widgets()
         self.summary_card.title_label.text = self.app_controller.tr("summary_card")
-        self.summary_grid.add_widget(MetricCard(self.app_controller.tr("status_label"), self.app_controller.tr("status_ready") if state.last_load_ok else self.app_controller.tr("status_pending")))
+        self.summary_grid.add_widget(self._metric_card(self.app_controller.tr("status_label"), self.app_controller.tr("status_ready") if state.last_load_ok else self.app_controller.tr("status_pending")))
         if state.has_dataset:
             total = len(state.records)
             mode = self.app_controller.tr("mode_multi") if state.is_multi else self.app_controller.tr("mode_single")
-            self.summary_grid.add_widget(MetricCard(self.app_controller.tr("starts"), str(total)))
-            self.summary_grid.add_widget(MetricCard(self.app_controller.tr("mode"), mode))
+            self.summary_grid.add_widget(self._metric_card(self.app_controller.tr("starts"), str(total)))
+            self.summary_grid.add_widget(self._metric_card(self.app_controller.tr("mode"), mode))
         else:
-            self.summary_grid.add_widget(MetricCard(self.app_controller.tr("starts"), "0"))
-            self.summary_grid.add_widget(MetricCard(self.app_controller.tr("mode"), self.app_controller.tr("mode_empty")))
+            self.summary_grid.add_widget(self._metric_card(self.app_controller.tr("starts"), "0"))
+            self.summary_grid.add_widget(self._metric_card(self.app_controller.tr("mode"), self.app_controller.tr("mode_empty")))
 
         self.validation_card.title_label.text = self.app_controller.tr("validation_card")
         if state.validation_messages:
@@ -191,6 +191,11 @@ class ImportScreen(MDScreen):
             button.md_bg_color = (0.925, 0.431, 0.0, 1.0) if selected else palette["inactive_button"]
             button.theme_text_color = "Custom"
             button.text_color = (1, 1, 1, 1) if selected else palette["inactive_text"]
+
+    def _metric_card(self, label: str, value: str) -> MetricCard:
+        card = MetricCard(label, value)
+        card.apply_theme(self.app_controller.palette())
+        return card
 
     def apply_theme(self, palette: dict):
         self.md_bg_color = palette["background"]

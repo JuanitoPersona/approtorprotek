@@ -196,6 +196,7 @@ class RotorProtekMobileApp(MDApp):
         self.set_header_visible(name != "fullscreen_chart")
         self._update_nav_active(name)
         self._refresh_active_screen()
+        self._apply_theme()
 
     def open_fullscreen_chart(
         self,
@@ -236,6 +237,7 @@ class RotorProtekMobileApp(MDApp):
         self.screen_manager.current = target
         self.set_header_visible(True)
         self._refresh_active_screen()
+        self._apply_theme()
 
     def set_header_visible(self, visible: bool):
         if not hasattr(self, "header"):

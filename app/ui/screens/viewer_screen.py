@@ -248,7 +248,7 @@ class ViewerScreen(MDScreen):
             (self.app_controller.tr_metric("Estado"), payload["selection_text"]),
             (self.app_controller.tr_metric("Origen"), payload["dataset_text"]),
         ):
-            self.header_meta.add_widget(MetricCard(title, value))
+            self.header_meta.add_widget(self._metric_card(title, value))
 
     def _refresh_selector(self):
         labels = self.app_controller.state.startup_labels()
@@ -273,11 +273,11 @@ class ViewerScreen(MDScreen):
     def _refresh_metrics(self, record):
         self.metrics_grid.clear_widgets()
         for title, value in self.app_controller.state.viewer_metric_cards(record):
-            self.metrics_grid.add_widget(MetricCard(title, value))
+            self.metrics_grid.add_widget(self._metric_card(title, value))
 
         self.secondary_metrics_grid.clear_widgets()
         for title, value in self.app_controller.state.viewer_secondary_metrics(record):
-            self.secondary_metrics_grid.add_widget(MetricCard(title, value))
+            self.secondary_metrics_grid.add_widget(self._metric_card(title, value))
 
     def _refresh_detail(self, record):
         self.detail_layout.clear_widgets()
@@ -336,6 +336,11 @@ class ViewerScreen(MDScreen):
             if visible and harmonic_points
             else (self.app_controller.tr("harmonics_info_none") if visible else self.app_controller.tr("harmonics_info_hidden"))
         )
+
+    def _metric_card(self, label: str, value: str) -> MetricCard:
+        card = MetricCard(label, value)
+        card.apply_theme(self.app_controller.palette())
+        return card
 
     def apply_theme(self, palette: dict):
         self.md_bg_color = palette["background"]

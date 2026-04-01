@@ -33,11 +33,20 @@ def _draw_text(canvas, text: str, x: float, y: float, color=(0.2, 0.2, 0.2, 1.0)
 def _downsample_points(points: list[tuple[float, float]], max_points: int) -> list[tuple[float, float]]:
     if max_points <= 0 or len(points) <= max_points:
         return points
-    step = max(1, int(math.ceil(len(points) / max_points)))
-    sampled = points[::step]
-    if sampled and sampled[-1] != points[-1]:
+    bucket_size = max(1, int(math.ceil(len(points) / max_points)))
+    sampled = [points[0]]
+    for start in range(1, len(points) - 1, bucket_size):
+        bucket = points[start:start + bucket_size]
+        if not bucket:
+            continue
+        min_point = min(bucket, key=lambda item: item[1])
+        max_point = max(bucket, key=lambda item: item[1])
+        for point in sorted({min_point, max_point}, key=lambda item: item[0]):
+            if sampled[-1] != point:
+                sampled.append(point)
+    if sampled[-1] != points[-1]:
         sampled.append(points[-1])
-    return sampled
+    return sampled[: max_points - 1] + [points[-1]] if len(sampled) > max_points else sampled
 
 
 def _nice_number(value: float, rounding: bool) -> float:
@@ -147,6 +156,7 @@ class MultiSeriesChart(Widget):
             return
         self.series = self._clone_series(self._base_series, detach_points=True)
         self.delete_mode = False
+        self.reset_zoom()
 
     def toggle_delete_mode(self):
         if not self.allow_point_deletion:
@@ -314,17 +324,19 @@ class MultiSeriesChart(Widget):
 
     def _redraw(self, *_args):
         self.canvas.clear()
-        self._legend_rows = self._build_legend_rows()
-        legend_row_height = 22
+        fullscreen_like = bool(self.enable_touch_navigation)
+        tick_font_size = 15 if fullscreen_like else (13 if min(self.width, self.height) >= 220 else 12)
+        axis_font_size = 17 if fullscreen_like else (14 if min(self.width, self.height) >= 220 else 13)
+        legend_font_size = 15 if fullscreen_like else 13
+        legend_row_height = 24 if fullscreen_like else 22
+        self._legend_rows = self._build_legend_rows(legend_font_size)
+        legend_width = self._legend_column_width(legend_font_size) if self.show_legend and self._legend_rows else 0
         legend_height = (legend_row_height * len(self._legend_rows) + 12) if self.show_legend and self._legend_rows else 0
-        tick_font_size = 13 if min(self.width, self.height) >= 220 else 12
-        axis_font_size = 14 if min(self.width, self.height) >= 220 else 13
-        legend_font_size = 13
 
         left = self.x + 72
-        right_padding = 18
-        bottom = self.y + 64
-        top_padding = 26 + legend_height
+        right_padding = 18 + legend_width
+        bottom = self.y + (72 if fullscreen_like else 64)
+        top_padding = 26
         width = max(10.0, self.width - (left - self.x) - right_padding)
         height = max(10.0, self.height - (bottom - self.y) - top_padding)
         top = bottom + height
@@ -354,7 +366,7 @@ class MultiSeriesChart(Widget):
         self._draw_grid_and_ticks(left, bottom, width, height, min_x, max_x, min_y, max_y, tick_font_size)
         self._draw_axis_labels(left, bottom, width, top, axis_font_size)
         if self.show_legend and self._legend_rows:
-            self._draw_legend(left, top + 10, width, legend_font_size, legend_row_height)
+            self._draw_legend(left + width + 10, top - legend_row_height + 2, legend_font_size, legend_row_height)
 
         if self.chart_mode == "bar":
             self._draw_bar_series(left, bottom, width, height, min_x, max_x, min_y, max_y)
@@ -455,25 +467,31 @@ class MultiSeriesChart(Widget):
         if self.y_axis_label:
             _draw_text(self.canvas, self.y_axis_label, left, top + 8, font_size=axis_font_size)
 
-    def _build_legend_rows(self) -> list[list[dict]]:
+    def _build_legend_rows(self, legend_font_size: int) -> list[list[dict]]:
         if not self.show_legend:
             return []
-        rows: list[list[dict]] = [[]]
-        current_width = 0.0
-        max_width = max(120.0, self.width - 120.0)
+        rows: list[list[dict]] = []
         for item in self.series:
             label = str(item.get("name", "Serie"))
-            texture = _text_texture(label, font_size=13)
+            texture = _text_texture(label, font_size=legend_font_size)
             item_width = 26 + texture.size[0]
-            if rows[-1] and current_width + item_width > max_width:
-                rows.append([])
-                current_width = 0.0
-            rows[-1].append({"name": label, "color": item.get("color", "#EC6E00"), "width": item_width})
-            current_width += item_width + 12
-        return [row for row in rows if row]
+            rows.append([{"name": label, "color": item.get("color", "#EC6E00"), "width": item_width}])
+        return rows
 
-    def _draw_legend(self, left, baseline_y, width, legend_font_size, legend_row_height):
-        y_cursor = baseline_y + (len(self._legend_rows) - 1) * legend_row_height
+    def _legend_column_width(self, legend_font_size: int) -> float:
+        if not self._legend_rows:
+            return 0.0
+        widths = []
+        for row in self._legend_rows:
+            if not row:
+                continue
+            item = row[0]
+            texture = _text_texture(item["name"], font_size=legend_font_size)
+            widths.append(30 + texture.size[0])
+        return min(max(widths, default=0.0) + 12, max(120.0, self.width * 0.34))
+
+    def _draw_legend(self, left, top_y, legend_font_size, legend_row_height):
+        y_cursor = top_y
         for row in self._legend_rows:
             cursor_x = left
             for item in row:
@@ -618,7 +636,7 @@ class PieChartWidget(Widget):
 
         legend_rows = len(self.segments)
         legend_font_size = 15
-        percentage_font_size = 17
+        percentage_font_size = 18
         total_font_size = 17
         legend_height = 22 * legend_rows + 10
         pie_diameter = min(self.width * 0.72, max(96.0, self.height - legend_height - 22))
@@ -640,8 +658,9 @@ class PieChartWidget(Widget):
 
             percentage = 100.0 * value / total
             angle_mid = math.radians(start_angle + sweep / 2.0)
-            if percentage >= 2.0:
-                label_radius = pie_diameter * 0.28
+            if percentage >= 3.0:
+                sweep_mid = max(18.0, min(70.0, sweep))
+                label_radius = pie_diameter * (0.22 + (70.0 - sweep_mid) / 220.0)
                 label_x = center_x + math.cos(angle_mid) * label_radius
                 label_y = center_y + math.sin(angle_mid) * label_radius
                 text = f"{percentage:.0f}%"

@@ -103,6 +103,11 @@ class ViewerScreen(MDScreen):
         )
         self.content.add_widget(self.torque_card)
 
+        self.params_table_card = SectionCard("Tabla de parametros")
+        self.params_table_grid = MDGridLayout(cols=2, adaptive_height=True, spacing=dp(8))
+        self.params_table_card.body.add_widget(self.params_table_grid)
+        self.content.add_widget(self.params_table_card)
+
         self.harmonics_card = SectionCard("Armonicos")
         self.harmonics_chart = MultiSeriesChart(
             size_hint_y=None,
@@ -202,6 +207,7 @@ class ViewerScreen(MDScreen):
         self._refresh_selector()
         self._refresh_metrics(record)
         self._refresh_detail(record)
+        self._refresh_parameter_table(record)
         self._refresh_charts(record)
         self._apply_responsive_layout()
 
@@ -223,6 +229,7 @@ class ViewerScreen(MDScreen):
         self.metrics_grid.clear_widgets()
         self.secondary_metrics_grid.clear_widgets()
         self.detail_layout.clear_widgets()
+        self.params_table_grid.clear_widgets()
         self.signal_chart.series = []
         self.torque_chart.series = []
         self.harmonics_chart.series = []
@@ -274,6 +281,12 @@ class ViewerScreen(MDScreen):
             row.add_widget(MDLabel(text=label, adaptive_height=True, theme_text_color="Secondary"))
             row.add_widget(MDLabel(text=str(value), adaptive_height=True))
             self.detail_layout.add_widget(row)
+
+    def _refresh_parameter_table(self, record):
+        self.params_table_grid.clear_widgets()
+        for label, value in self.app_controller.state.viewer_parameter_rows(record):
+            self.params_table_grid.add_widget(MDLabel(text=str(label), adaptive_height=True, theme_text_color="Secondary"))
+            self.params_table_grid.add_widget(MDLabel(text=str(value), adaptive_height=True))
 
     def _refresh_charts(self, record):
         time_axis = np.asarray(record.series.time, dtype=float)

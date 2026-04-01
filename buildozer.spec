@@ -6,7 +6,7 @@ source.dir = .
 source.include_exts = py,kv,png,jpg,jpeg,ttf,ico,csv,xlsx
 source.exclude_dirs = .git,.github,build,old,__pycache__
 source.exclude_patterns = *.pyc,*.pyo,allstarts.csv,allstarts_lemona.csv,tmp_*.csv
-version = 0.1.13
+version = 0.1.14
 icon.filename = logo_app.png
 presplash.filename = logo_app.png
 

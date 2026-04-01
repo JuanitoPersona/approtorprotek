@@ -16,7 +16,7 @@ from .historical import (
 )
 from .metrics import scalar_value
 from .metrics import is_successful_start
-from .models import StartupDataset, StartupRecord
+from .models import SCALAR_FIELDS, StartupDataset, StartupRecord
 
 MAX_CSV_SIZE_BYTES = 64 * 1024 * 1024
 
@@ -188,6 +188,21 @@ class MobileAppState:
             ("Energia", _format_scalar(scalars.get("E dis(MJ)"), "MJ")),
             ("Angulo", _format_scalar(scalars.get("\xC1ngulo (\xB0)"), "deg")),
         ]
+
+    def viewer_parameter_rows(self, record: Optional[StartupRecord]) -> List[tuple[str, str]]:
+        if record is None:
+            return []
+        rows: List[tuple[str, str]] = []
+        used = set()
+        for key in SCALAR_FIELDS:
+            if key in record.scalars:
+                rows.append((key, _format_scalar(record.scalars.get(key))))
+                used.add(key)
+        for key, value in record.scalars.items():
+            if key in used:
+                continue
+            rows.append((str(key), _format_scalar(value)))
+        return rows
 
     def condition_monitoring_series(self, metric_name: str) -> tuple[list[tuple[float, float]], int]:
         points: list[tuple[float, float]] = []

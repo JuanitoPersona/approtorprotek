@@ -13,6 +13,7 @@ from kivymd.uix.button import MDFlatButton, MDRaisedButton
 from kivymd.uix.filemanager import MDFileManager
 from kivymd.uix.label import MDLabel
 
+from ..android_share import export_widget_png, is_android_runtime as is_android_share_runtime, share_png_file
 from ..android_file_picker import AndroidCsvPicker, is_android_runtime
 from ..mobile_state import MobileAppState
 from .screens.condition_monitoring_screen import ConditionMonitoringScreen
@@ -21,12 +22,13 @@ from .screens.historical_screen import HistoricalScreen
 from .screens.import_screen import ImportScreen
 from .screens.viewer_screen import ViewerScreen
 from .i18n import tr
-from .theme import APP_THEME
+from .theme import get_theme
 
 
 class RotorProtekMobileApp(MDApp):
     def build(self):
         self.language = "es"
+        self.dark_mode = False
         self.title = self.tr("app_title")
         self.theme_cls.primary_palette = "Orange"
         self.theme_cls.theme_style = "Light"
@@ -45,7 +47,9 @@ class RotorProtekMobileApp(MDApp):
                 on_error=self._handle_picker_error,
             )
 
-        root = MDBoxLayout(orientation="vertical", md_bg_color=APP_THEME["background"])
+        palette = self.palette()
+        root = MDBoxLayout(orientation="vertical", md_bg_color=palette["background"])
+        self.root_layout = root
         header = MDBoxLayout(orientation="vertical", adaptive_height=True, padding=dp(16), spacing=dp(8))
         self.header = header
         self.app_title_label = MDLabel(text=self.tr("app_title"), bold=True, font_style="H5", adaptive_height=True)
@@ -252,6 +256,7 @@ class RotorProtekMobileApp(MDApp):
             self.set_header_visible(True)
 
     def refresh_ui(self):
+        self._apply_theme()
         self.title = self.tr("app_title")
         self.app_title_label.text = self.tr("app_title")
         self.file_label.text = self.state.current_file_label if self.state.current_file_label else self.tr("no_file_loaded")
@@ -282,17 +287,50 @@ class RotorProtekMobileApp(MDApp):
         }
         for screen, button in active_map.items():
             active = screen == screen_name
-            button.md_bg_color = (0.925, 0.431, 0.0, 1.0) if active else (0.91, 0.91, 0.91, 1.0)
+            palette = self.palette()
+            button.md_bg_color = (0.925, 0.431, 0.0, 1.0) if active else palette["inactive_button"]
             button.theme_text_color = "Custom"
-            button.text_color = (1, 1, 1, 1) if active else (0.25, 0.25, 0.25, 1)
+            button.text_color = (1, 1, 1, 1) if active else palette["inactive_text"]
 
     def tr(self, key: str, **kwargs) -> str:
         return tr(self.language, key, **kwargs)
+
+    def tr_metric(self, label: str) -> str:
+        from .i18n import tr_metric
+
+        return tr_metric(self.language, label)
+
+    def palette(self) -> dict:
+        return get_theme(self.dark_mode)
 
     def set_language(self, language: str):
         if language not in {"es", "en", "fr"} or language == self.language:
             return
         self.language = language
+        self.refresh_ui()
+
+    def set_dark_mode(self, dark_mode: bool):
+        dark_mode = bool(dark_mode)
+        if dark_mode == self.dark_mode:
+            return
+        self.dark_mode = dark_mode
+        self.refresh_ui()
+
+    def toggle_dark_mode(self):
+        self.set_dark_mode(not self.dark_mode)
+
+    def share_chart_widget(self, widget, title: str):
+        try:
+            file_path = export_widget_png(widget, title)
+            ok, message = share_png_file(file_path, chooser_title=self.tr("share"))
+            if ok:
+                self.state.validation_messages = [self.tr("share_sent")]
+            elif is_android_share_runtime():
+                self.state.validation_messages = [self.tr("share_error", error=message)]
+            else:
+                self.state.validation_messages = [self.tr("share_saved", path=message)]
+        except Exception as exc:
+            self.state.validation_messages = [self.tr("share_error", error=str(exc))]
         self.refresh_ui()
 
     def _refresh_active_screen(self):
@@ -307,3 +345,24 @@ class RotorProtekMobileApp(MDApp):
             pass
         else:
             self.import_screen.refresh()
+
+    def _apply_theme(self):
+        palette = self.palette()
+        self.theme_cls.theme_style = "Dark" if self.dark_mode else "Light"
+        if hasattr(self, "root_layout"):
+            self.root_layout.md_bg_color = palette["background"]
+        if hasattr(self, "screen_manager"):
+            self._apply_widget_theme(self.screen_manager, palette)
+        if hasattr(self, "header"):
+            self._apply_widget_theme(self.header, palette)
+
+    def _apply_widget_theme(self, widget, palette: dict):
+        if hasattr(widget, "apply_theme"):
+            widget.apply_theme(palette)
+        if hasattr(widget, "dark_mode"):
+            try:
+                widget.dark_mode = self.dark_mode
+            except Exception:
+                pass
+        for child in getattr(widget, "children", []):
+            self._apply_widget_theme(child, palette)

@@ -45,7 +45,8 @@ class HistoricalScreen(MDScreen):
         self.load_card.body.add_widget(_chart_controls(self.load_chart, self._open_load_chart_fullscreen))
         self.load_info = MDLabel(adaptive_height=True, theme_text_color="Secondary")
         self.load_card.body.add_widget(self.load_chart)
-        self.load_card.body.add_widget(MDLabel(text="Eje X: orden temporal de arranques | Eje Y: % de carga", adaptive_height=True, theme_text_color="Secondary"))
+        self.load_axis_info = MDLabel(text="", adaptive_height=True, theme_text_color="Secondary")
+        self.load_card.body.add_widget(self.load_axis_info)
         self.load_card.body.add_widget(self.load_info)
         self.content.add_widget(self.load_card)
 
@@ -73,15 +74,15 @@ class HistoricalScreen(MDScreen):
 
     def _open_load_chart_fullscreen(self, *_args):
         self.app_controller.open_fullscreen_chart(
-            title="Historico de carga",
-            subtitle="Evolucion temporal del porcentaje de carga.",
+            title=self.app_controller.tr("history_fullscreen_title"),
+            subtitle=self.app_controller.tr("history_fullscreen_subtitle"),
             series=list(self.load_chart.series),
             x_axis_label=self.load_chart.x_axis_label,
             y_axis_label=self.load_chart.y_axis_label,
             chart_mode=self.load_chart.chart_mode,
             show_legend=self.load_chart.show_legend,
             show_points=self.load_chart.show_points,
-            footer="En pantalla completa el gesto tactil no compite con el scroll del historico.",
+            footer=self.app_controller.tr("history_fullscreen_footer"),
         )
 
     def refresh(self):
@@ -89,9 +90,11 @@ class HistoricalScreen(MDScreen):
         self.page_title.text = self.app_controller.tr("history_title")
         self.page_subtitle.text = self.app_controller.tr("history_subtitle")
         self.load_card.title_label.text = self.app_controller.tr("history_load")
+        self.load_axis_info.text = self.app_controller.tr("history_load_axes")
         self.success_card.title_label.text = self.app_controller.tr("history_success")
         self.cascade_card.title_label.text = self.app_controller.tr("history_cascade")
         self.current_card.title_label.text = self.app_controller.tr("history_current")
+        self.empty_state.text_widget.text = self.app_controller.tr("history_empty")
         visible = state.is_multi
         for widget in (self.load_card, self.success_card, self.cascade_card, self.current_card):
             widget.opacity = 1 if visible else 0
@@ -106,20 +109,23 @@ class HistoricalScreen(MDScreen):
             return
 
         payload = state.historical_payload()
-        self.load_chart.series = [{"name": "Carga", "color": "#EC6E00", "points": payload["load_points"]}]
+        self.load_chart.series = [{"name": self.app_controller.tr_metric("Carga"), "color": "#EC6E00", "points": payload["load_points"]}]
         self.load_info.text = (
-            f"Se omitieron {payload['omitted_load']} arranques sin % de carga calculable."
+            self.app_controller.tr("history_load_info_omitted", count=payload["omitted_load"])
             if payload["omitted_load"]
-            else "Todos los arranques validos aportan % de carga."
+            else self.app_controller.tr("history_load_info_none")
         )
 
         self.success_chart.segments = [
-            {"label": "Exitosos", "value": payload["success_count"], "color": "#2E7D32"},
-            {"label": "Fallidos", "value": payload["failure_count"], "color": "#C62828"},
+            {"label": self.app_controller.tr_metric("Exitosos"), "value": payload["success_count"], "color": "#2E7D32"},
+            {"label": self.app_controller.tr_metric("Fallidos"), "value": payload["failure_count"], "color": "#C62828"},
         ]
-        self.success_info.text = (
-            f"Exitosos: {payload['success_count']} ({payload['success_ratios']['Exitosos']:.0f}%) | "
-            f"Fallidos: {payload['failure_count']} ({payload['success_ratios']['Fallidos']:.0f}%)"
+        self.success_info.text = self.app_controller.tr(
+            "history_success_info",
+            success=payload["success_count"],
+            success_pct=payload["success_ratios"]["Exitosos"],
+            failure=payload["failure_count"],
+            failure_pct=payload["success_ratios"]["Fallidos"],
         )
 
         self.cascade_chart.segments = [
@@ -128,13 +134,13 @@ class HistoricalScreen(MDScreen):
             {"label": "70 - 80", "value": payload["cascade_counts"]["70 - 80"], "color": "#EF6C00"},
             {"label": "> 80", "value": payload["cascade_counts"]["> 80"], "color": "#C62828"},
         ]
-        self.cascade_info.text = (
-            "Clasificacion calculada desde Angulo (deg). "
-            f"< 60: {payload['cascade_ratios']['< 60']:.0f}% | "
-            f"60 - 70: {payload['cascade_ratios']['60 - 70']:.0f}% | "
-            f"70 - 80: {payload['cascade_ratios']['70 - 80']:.0f}% | "
-            f"> 80: {payload['cascade_ratios']['> 80']:.0f}%. "
-            f"Omitidos: {payload['omitted_cascade']}."
+        self.cascade_info.text = self.app_controller.tr(
+            "history_cascade_info",
+            low=payload["cascade_ratios"]["< 60"],
+            mid1=payload["cascade_ratios"]["60 - 70"],
+            mid2=payload["cascade_ratios"]["70 - 80"],
+            high=payload["cascade_ratios"]["> 80"],
+            omitted=payload["omitted_cascade"],
         )
 
         self.current_chart.segments = [
@@ -142,11 +148,12 @@ class HistoricalScreen(MDScreen):
             {"label": "80 - 90 / 120 - 130", "value": payload["current_counts"]["80 - 90 / 120 - 130"], "color": "#EF6C00"},
             {"label": "< 80 / > 130", "value": payload["current_counts"]["< 80 / > 130"], "color": "#C62828"},
         ]
-        self.current_info.text = (
-            f"90 - 120: {payload['current_ratios']['90 - 120']:.0f}% | "
-            f"80 - 90 / 120 - 130: {payload['current_ratios']['80 - 90 / 120 - 130']:.0f}% | "
-            f"< 80 / > 130: {payload['current_ratios']['< 80 / > 130']:.0f}%. "
-            f"Omitidos: {payload['omitted_current']}."
+        self.current_info.text = self.app_controller.tr(
+            "history_current_info",
+            ok=payload["current_ratios"]["90 - 120"],
+            warn=payload["current_ratios"]["80 - 90 / 120 - 130"],
+            bad=payload["current_ratios"]["< 80 / > 130"],
+            omitted=payload["omitted_current"],
         )
         self._apply_responsive_layout()
 

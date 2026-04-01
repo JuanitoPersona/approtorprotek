@@ -20,8 +20,10 @@ class FullscreenChartScreen(MDScreen):
         self.reset_button = MDFlatButton(text="Reset", on_release=lambda *_: self.chart.reset_zoom())
         self.delete_button = MDFlatButton(text="Excluir puntos", on_release=lambda *_: self._toggle_delete_mode())
         self.restore_button = MDFlatButton(text="Restaurar", on_release=lambda *_: self.chart.restore_points())
+        self.share_button = MDFlatButton(text="Compartir", on_release=lambda *_: self._share_chart())
         self.close_button = MDRaisedButton(text="Cerrar", on_release=lambda *_: self.app_controller.close_fullscreen_chart())
-        for widget in (self.reset_button, self.delete_button, self.restore_button, self.close_button):
+        self._chart_title = "chart"
+        for widget in (self.reset_button, self.delete_button, self.restore_button, self.share_button, self.close_button):
             widget.size_hint_x = 1
             self.controls.add_widget(widget)
         root.add_widget(self.controls)
@@ -36,6 +38,9 @@ class FullscreenChartScreen(MDScreen):
     def _toggle_delete_mode(self):
         self.chart.toggle_delete_mode()
         self.delete_button.text = self.app_controller.tr("fullscreen_delete_exit") if self.chart.delete_mode else self.app_controller.tr("fullscreen_delete")
+
+    def _share_chart(self):
+        self.app_controller.share_chart_widget(self.chart, self._chart_title)
 
     def apply_chart(
         self,
@@ -55,7 +60,9 @@ class FullscreenChartScreen(MDScreen):
         self.reset_button.text = self.app_controller.tr("reset")
         self.delete_button.text = self.app_controller.tr("fullscreen_delete")
         self.restore_button.text = self.app_controller.tr("restore")
+        self.share_button.text = self.app_controller.tr("share")
         self.close_button.text = self.app_controller.tr("close")
+        self._chart_title = title
         self.chart.load_series_for_view(series)
         self.chart.x_axis_label = x_axis_label
         self.chart.y_axis_label = y_axis_label
@@ -79,4 +86,4 @@ class FullscreenChartScreen(MDScreen):
     def _apply_responsive_layout(self):
         landscape = self.width > self.height and self.width > dp(700)
         self.chart.stroke_width = 2.2 if landscape else 1.8
-        self.controls.cols = 4 if landscape else 2
+        self.controls.cols = 5 if landscape else 3

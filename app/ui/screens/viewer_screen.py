@@ -79,13 +79,8 @@ class ViewerScreen(MDScreen):
         self.signal_chart.open_fullscreen_callback = self._open_signal_chart_fullscreen
         self.signals_card.body.add_widget(_chart_controls(self.signal_chart, self._open_signal_chart_fullscreen))
         self.signals_card.body.add_widget(self.signal_chart)
-        self.signals_card.body.add_widget(
-            MDLabel(
-                text="Velocidad, corriente y par apilados en una unica lectura temporal.",
-                adaptive_height=True,
-                theme_text_color="Secondary",
-            )
-        )
+        self.signals_help_label = MDLabel(text="", adaptive_height=True, theme_text_color="Secondary")
+        self.signals_card.body.add_widget(self.signals_help_label)
         self.content.add_widget(self.signals_card)
 
         self.torque_card = SectionCard("Par y carga")
@@ -94,13 +89,8 @@ class ViewerScreen(MDScreen):
         self.torque_chart.open_fullscreen_callback = self._open_torque_chart_fullscreen
         self.torque_card.body.add_widget(_chart_controls(self.torque_chart, self._open_torque_chart_fullscreen))
         self.torque_card.body.add_widget(self.torque_chart)
-        self.torque_card.body.add_widget(
-            MDLabel(
-                text="Relacion angular entre par resistente, par motor y referencia congelada.",
-                adaptive_height=True,
-                theme_text_color="Secondary",
-            )
-        )
+        self.torque_help_label = MDLabel(text="", adaptive_height=True, theme_text_color="Secondary")
+        self.torque_card.body.add_widget(self.torque_help_label)
         self.content.add_widget(self.torque_card)
 
         self.params_table_card = SectionCard("Tabla de parametros")
@@ -165,7 +155,7 @@ class ViewerScreen(MDScreen):
             show_legend=self.signal_chart.show_legend,
             show_points=self.signal_chart.show_points,
             x_tick_labels=list(self.signal_chart.x_tick_labels),
-            footer="Pinza para zoom y arrastra sobre la grafica para analizar velocidad, corriente y par.",
+            footer=self.app_controller.tr("viewer_signals_footer"),
         )
 
     def _open_torque_chart_fullscreen(self, *_args):
@@ -179,7 +169,7 @@ class ViewerScreen(MDScreen):
             show_legend=self.torque_chart.show_legend,
             show_points=self.torque_chart.show_points,
             x_tick_labels=list(self.torque_chart.x_tick_labels),
-            footer="Usa la vista completa para comparar el par motor, la carga y la referencia congelada sin interferencia del scroll.",
+            footer=self.app_controller.tr("viewer_torque_footer"),
         )
 
     def _open_harmonics_chart_fullscreen(self, *_args):
@@ -193,7 +183,7 @@ class ViewerScreen(MDScreen):
             show_legend=self.harmonics_chart.show_legend,
             show_points=self.harmonics_chart.show_points,
             x_tick_labels=list(self.harmonics_chart.x_tick_labels),
-            footer="La vista completa deja navegar el espectro con mas precision y sin competir con el scroll vertical.",
+            footer=self.app_controller.tr("viewer_harmonics_footer"),
         )
 
     def refresh(self):
@@ -213,6 +203,8 @@ class ViewerScreen(MDScreen):
         self.torque_card.title_label.text = self.app_controller.tr("torque_load")
         self.params_table_card.title_label.text = self.app_controller.tr("params_table")
         self.harmonics_card.title_label.text = self.app_controller.tr("harmonics")
+        self.signals_help_label.text = self.app_controller.tr("viewer_signals_help")
+        self.torque_help_label.text = self.app_controller.tr("viewer_torque_help")
         self._refresh_header(record)
         self._refresh_selector()
         self._refresh_metrics(record)
@@ -232,12 +224,12 @@ class ViewerScreen(MDScreen):
         self.harmonics_chart.height = dp(280) if landscape else dp(240)
 
     def _clear_view(self):
-        self.header_subtitle.text = "Carga un CSV para inspeccionar un arranque."
+        self.header_subtitle.text = self.app_controller.tr("viewer_empty_subtitle")
         self.header_card.title_label.text = self.app_controller.tr("viewer_title")
         self.selector_card.title_label.text = self.app_controller.tr("active_start")
         self.selector_button.text = "Sin arranque"
         self.selector_button.disabled = True
-        self.selector_hint.text = "La vista se activara cuando exista un dataset valido."
+        self.selector_hint.text = self.app_controller.tr("viewer_empty_hint")
         self.metrics_grid.clear_widgets()
         self.secondary_metrics_grid.clear_widgets()
         self.detail_layout.clear_widgets()
@@ -253,8 +245,8 @@ class ViewerScreen(MDScreen):
         self.header_subtitle.text = payload["subtitle"]
         self.header_meta.clear_widgets()
         for title, value in (
-            ("Estado", payload["selection_text"]),
-            ("Origen", payload["dataset_text"]),
+            (self.app_controller.tr_metric("Estado"), payload["selection_text"]),
+            (self.app_controller.tr_metric("Origen"), payload["dataset_text"]),
         ):
             self.header_meta.add_widget(MetricCard(title, value))
 
@@ -273,9 +265,9 @@ class ViewerScreen(MDScreen):
         self.selector_button.text = labels[index]
         self.harmonics_toggle_button.text = self.app_controller.tr("show_harmonics") if not self.app_controller.state.show_harmonics else self.app_controller.tr("hide_harmonics")
         self.selector_hint.text = (
-            "Selecciona el arranque activo que quieres inspeccionar en detalle."
+            self.app_controller.tr("viewer_select_hint_multi")
             if multi
-            else "El CSV contiene un unico arranque, asi que esta vista queda fijada automaticamente."
+            else self.app_controller.tr("viewer_select_hint_single")
         )
 
     def _refresh_metrics(self, record):
@@ -291,14 +283,14 @@ class ViewerScreen(MDScreen):
         self.detail_layout.clear_widgets()
         for label, value in self.app_controller.state.viewer_detail_rows(record):
             row = MDBoxLayout(orientation="vertical", adaptive_height=True, spacing=dp(2))
-            row.add_widget(MDLabel(text=label, adaptive_height=True, theme_text_color="Secondary"))
+            row.add_widget(MDLabel(text=self.app_controller.tr_metric(label), adaptive_height=True, theme_text_color="Secondary"))
             row.add_widget(MDLabel(text=str(value), adaptive_height=True))
             self.detail_layout.add_widget(row)
 
     def _refresh_parameter_table(self, record):
         self.params_table_grid.clear_widgets()
         for label, value in self.app_controller.state.viewer_parameter_rows(record):
-            self.params_table_grid.add_widget(MDLabel(text=str(label), adaptive_height=True, theme_text_color="Secondary"))
+            self.params_table_grid.add_widget(MDLabel(text=self.app_controller.tr_metric(str(label)), adaptive_height=True, theme_text_color="Secondary"))
             self.params_table_grid.add_widget(MDLabel(text=str(value), adaptive_height=True))
 
     def _refresh_charts(self, record):
@@ -307,22 +299,22 @@ class ViewerScreen(MDScreen):
             size = max(len(record.series.speed), len(record.series.current), len(record.series.torque))
             time_axis = np.arange(size, dtype=float)
         self.signal_chart.series = [
-            {"name": "Velocidad", "color": "#111111", "points": _points(time_axis, record.series.speed)},
-            {"name": "Corriente", "color": "#EC6E00", "points": _points(time_axis, record.series.current)},
-            {"name": "Par", "color": "#2E7D32", "points": _points(time_axis, record.series.torque)},
+            {"name": self.app_controller.tr_metric("Velocidad"), "color": "#111111", "points": _points(time_axis, record.series.speed)},
+            {"name": self.app_controller.tr_metric("Corriente"), "color": "#EC6E00", "points": _points(time_axis, record.series.current)},
+            {"name": self.app_controller.tr_metric("Par"), "color": "#2E7D32", "points": _points(time_axis, record.series.torque)},
         ]
         dual_points = _points(time_axis[: len(record.series.dual_current)], record.series.dual_current)
         if dual_points:
-            self.signal_chart.series.append({"name": "Corriente 2 motor", "color": "#1976D2", "points": dual_points})
+            self.signal_chart.series.append({"name": self.app_controller.tr_metric("Corriente 2 motor"), "color": "#1976D2", "points": dual_points})
 
         load_torque, motor_torque, angle_axis = _torque_load_geometry(record)
         frozen_amp = scalar_value(record.to_legacy(), "Amp frz(%)")
         frozen_numeric = _safe_float(frozen_amp)
         frozen_curve = frozen_numeric * np.sin(np.radians(angle_axis)) if angle_axis.size and not np.isnan(frozen_numeric) else np.array([])
         self.torque_chart.series = [
-            {"name": "Carga", "color": "#111111", "points": _points(angle_axis, load_torque)},
-            {"name": "Motor", "color": "#EC6E00", "points": _points(angle_axis, motor_torque)},
-            {"name": "Congelado", "color": "#1976D2", "points": _points(angle_axis, frozen_curve)},
+            {"name": self.app_controller.tr_metric("Carga"), "color": "#111111", "points": _points(angle_axis, load_torque)},
+            {"name": self.app_controller.tr_metric("Motor"), "color": "#EC6E00", "points": _points(angle_axis, motor_torque)},
+            {"name": self.app_controller.tr_metric("Congelado"), "color": "#1976D2", "points": _points(angle_axis, frozen_curve)},
         ]
 
         max_current = _safe_float(record.scalars.get("I m\xE1x (Arms)"))
@@ -338,7 +330,7 @@ class ViewerScreen(MDScreen):
         self.harmonics_card.opacity = 1 if visible else 0
         self.harmonics_card.disabled = not visible
         self.harmonics_card.height = self.harmonics_card.minimum_height if visible else 0
-        self.harmonics_chart.series = [{"name": "Armonicos", "color": "#2E7D32", "points": harmonic_points}] if visible else []
+        self.harmonics_chart.series = [{"name": self.app_controller.tr_metric("Armonicos"), "color": "#2E7D32", "points": harmonic_points}] if visible else []
         self.harmonics_info.text = (
             self.app_controller.tr("harmonics_info_count", count=len(harmonic_points))
             if visible and harmonic_points

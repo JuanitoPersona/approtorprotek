@@ -113,6 +113,7 @@ class MultiSeriesChart(Widget):
     enable_touch_navigation = BooleanProperty(False)
     allow_point_deletion = BooleanProperty(False)
     x_tick_labels = ListProperty([])
+    dark_mode = BooleanProperty(False)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -139,6 +140,7 @@ class MultiSeriesChart(Widget):
             enable_touch_navigation=self._redraw,
             allow_point_deletion=self._redraw,
             x_tick_labels=self._redraw,
+            dark_mode=self._redraw,
         )
     def zoom_in(self):
         self._set_zoom(self.zoom_factor * 1.35)
@@ -329,6 +331,7 @@ class MultiSeriesChart(Widget):
     def _redraw(self, *_args):
         self.canvas.clear()
         fullscreen_like = bool(self.enable_touch_navigation)
+        palette = _chart_palette(self.dark_mode)
         tick_font_size = 15 if fullscreen_like else (13 if min(self.width, self.height) >= 220 else 12)
         axis_font_size = 17 if fullscreen_like else (14 if min(self.width, self.height) >= 220 else 13)
         legend_font_size = 15 if fullscreen_like else 13
@@ -347,9 +350,9 @@ class MultiSeriesChart(Widget):
         self._plot_rect = (left, bottom, width, height)
 
         with self.canvas:
-            Color(0.96, 0.96, 0.96, 1)
+            Color(*palette["background"])
             Rectangle(pos=self.pos, size=self.size)
-            Color(0.82, 0.82, 0.82, 1)
+            Color(*palette["border"])
             Line(rectangle=(*self.pos, *self.size), width=1)
 
         all_points = self._extract_points()
@@ -361,16 +364,16 @@ class MultiSeriesChart(Widget):
         min_x, max_x, min_y, max_y = self._current_view_bounds()
 
         with self.canvas:
-            Color(1, 1, 1, 1)
+            Color(*palette["plot"])
             Rectangle(pos=(left, bottom), size=(width, height))
             if self.delete_mode:
                 Color(0.79, 0.14, 0.14, 0.12)
                 Rectangle(pos=(left, bottom), size=(width, height))
 
-        self._draw_grid_and_ticks(left, bottom, width, height, min_x, max_x, min_y, max_y, tick_font_size)
-        self._draw_axis_labels(left, bottom, width, top, axis_font_size)
+        self._draw_grid_and_ticks(left, bottom, width, height, min_x, max_x, min_y, max_y, tick_font_size, palette)
+        self._draw_axis_labels(left, bottom, width, top, axis_font_size, palette)
         if self.show_legend and self._legend_rows:
-            self._draw_legend(left + width + 10, top - legend_row_height + 2, legend_font_size, legend_row_height)
+            self._draw_legend(left + width + 10, top - legend_row_height + 2, legend_font_size, legend_row_height, palette)
 
         if self.chart_mode == "bar":
             self._draw_bar_series(left, bottom, width, height, min_x, max_x, min_y, max_y)
@@ -422,12 +425,12 @@ class MultiSeriesChart(Widget):
         min_y = full_min_y + extra_y * self.pan_y
         return min_x, min_x + span_x, min_y, min_y + span_y
 
-    def _draw_grid_and_ticks(self, left, bottom, width, height, min_x, max_x, min_y, max_y, tick_font_size):
+    def _draw_grid_and_ticks(self, left, bottom, width, height, min_x, max_x, min_y, max_y, tick_font_size, palette):
         x_ticks = self._bar_ticks(min_x, max_x) if self.chart_mode == "bar" else self._line_ticks(min_x, max_x)
         y_ticks = _nice_ticks(min_y, max_y, target_count=5)
 
         with self.canvas:
-            Color(0.74, 0.74, 0.74, 1)
+            Color(*palette["axis"])
             Line(points=[left, bottom, left, bottom + height], width=1.1)
             Line(points=[left, bottom, left + width, bottom], width=1.1)
 
@@ -436,13 +439,13 @@ class MultiSeriesChart(Widget):
                 continue
             y_pos = bottom + ((value - min_y) / (max_y - min_y)) * height
             with self.canvas:
-                Color(0.90, 0.90, 0.90, 1)
+                Color(*palette["grid"])
                 Line(points=[left, y_pos, left + width, y_pos], width=1)
-                Color(0.62, 0.62, 0.62, 1)
+                Color(*palette["tick"])
                 Line(points=[left - 4, y_pos, left, y_pos], width=1)
             label_text = _format_tick(value)
-            size = _measure_text(label_text, font_size=tick_font_size)
-            _draw_text(self.canvas, label_text, left - size[0] - 8, y_pos - size[1] / 2.0, font_size=tick_font_size)
+            size = _measure_text(label_text, color=palette["text"], font_size=tick_font_size)
+            _draw_text(self.canvas, label_text, left - size[0] - 8, y_pos - size[1] / 2.0, color=palette["text"], font_size=tick_font_size)
 
         last_bar_label = None
         for tick in x_ticks:
@@ -462,19 +465,19 @@ class MultiSeriesChart(Widget):
                     continue
                 x_pos = left + ((tick - min_x) / (max_x - min_x)) * width
             with self.canvas:
-                Color(0.90, 0.90, 0.90, 1)
+                Color(*palette["grid"])
                 Line(points=[x_pos, bottom, x_pos, bottom + height], width=1)
-                Color(0.62, 0.62, 0.62, 1)
+                Color(*palette["tick"])
                 Line(points=[x_pos, bottom, x_pos, bottom - 4], width=1)
-            size = _measure_text(label, font_size=tick_font_size)
-            _draw_text(self.canvas, label, x_pos - size[0] / 2.0, bottom - size[1] - 8, font_size=tick_font_size)
+            size = _measure_text(label, color=palette["text"], font_size=tick_font_size)
+            _draw_text(self.canvas, label, x_pos - size[0] / 2.0, bottom - size[1] - 8, color=palette["text"], font_size=tick_font_size)
 
-    def _draw_axis_labels(self, left, bottom, width, top, axis_font_size):
+    def _draw_axis_labels(self, left, bottom, width, top, axis_font_size, palette):
         if self.x_axis_label:
-            size = _measure_text(self.x_axis_label, font_size=axis_font_size)
-            _draw_text(self.canvas, self.x_axis_label, left + (width - size[0]) / 2.0, self.y + 10, font_size=axis_font_size)
+            size = _measure_text(self.x_axis_label, color=palette["text"], font_size=axis_font_size)
+            _draw_text(self.canvas, self.x_axis_label, left + (width - size[0]) / 2.0, self.y + 10, color=palette["text"], font_size=axis_font_size)
         if self.y_axis_label:
-            _draw_text(self.canvas, self.y_axis_label, left, top + 8, font_size=axis_font_size)
+            _draw_text(self.canvas, self.y_axis_label, left, top + 8, color=palette["text"], font_size=axis_font_size)
 
     def _build_legend_rows(self, legend_font_size: int) -> list[list[dict]]:
         if not self.show_legend:
@@ -499,7 +502,7 @@ class MultiSeriesChart(Widget):
             widths.append(30 + texture.size[0])
         return min(max(widths, default=0.0) + 12, max(120.0, self.width * 0.34))
 
-    def _draw_legend(self, left, top_y, legend_font_size, legend_row_height):
+    def _draw_legend(self, left, top_y, legend_font_size, legend_row_height, palette):
         y_cursor = top_y
         for row in self._legend_rows:
             cursor_x = left
@@ -508,7 +511,7 @@ class MultiSeriesChart(Widget):
                 with self.canvas:
                     Color(*rgba)
                     Line(points=[cursor_x, y_cursor + 7, cursor_x + 14, y_cursor + 7], width=2)
-                _draw_text(self.canvas, item["name"], cursor_x + 18, y_cursor, font_size=legend_font_size)
+                _draw_text(self.canvas, item["name"], cursor_x + 18, y_cursor, color=palette["text"], font_size=legend_font_size)
                 cursor_x += item["width"] + 12
             y_cursor -= legend_row_height
 
@@ -624,28 +627,29 @@ class MultiSeriesChart(Widget):
 
 class PieChartWidget(Widget):
     segments = ListProperty([])
+    dark_mode = BooleanProperty(False)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.bind(pos=self._redraw, size=self._redraw, segments=self._redraw)
+        self.bind(pos=self._redraw, size=self._redraw, segments=self._redraw, dark_mode=self._redraw)
 
     def _redraw(self, *_args):
         self.canvas.clear()
+        palette = _chart_palette(self.dark_mode)
         with self.canvas:
-            Color(0.96, 0.96, 0.96, 1)
+            Color(*palette["background"])
             Rectangle(pos=self.pos, size=self.size)
 
         total = sum(max(0.0, float(segment.get("value", 0))) for segment in self.segments)
         if total <= 0:
             with self.canvas:
-                Color(0.85, 0.85, 0.85, 1)
+                Color(*palette["grid"])
                 Ellipse(pos=(self.center_x - 48, self.center_y - 48), size=(96, 96))
-            _draw_text(self.canvas, "Sin datos", self.center_x - 24, self.center_y - 8)
+            _draw_text(self.canvas, "Sin datos", self.center_x - 24, self.center_y - 8, color=palette["text"])
             return
 
         legend_rows = len(self.segments)
-        legend_font_size = 15
-        percentage_font_size = 18
+        legend_font_size = 18
         total_font_size = 17
         legend_height = 22 * legend_rows + 10
         pie_diameter = min(self.width * 0.72, max(96.0, self.height - legend_height - 22))
@@ -666,39 +670,21 @@ class PieChartWidget(Widget):
                 Ellipse(pos=rect[:2], size=rect[2:], angle_start=start_angle, angle_end=start_angle + sweep)
 
             percentage = 100.0 * value / total
-            angle_mid = math.radians(start_angle + sweep / 2.0)
-            if percentage >= 3.0:
-                sweep_mid = max(18.0, min(70.0, sweep))
-                label_radius = pie_diameter * (0.22 + (70.0 - sweep_mid) / 220.0)
-                label_x = center_x + math.cos(angle_mid) * label_radius
-                label_y = center_y + math.sin(angle_mid) * label_radius
-                text = f"{percentage:.0f}%"
-                luminance = rgba[0] * 0.299 + rgba[1] * 0.587 + rgba[2] * 0.114
-                text_color = (0.08, 0.08, 0.08, 1.0) if luminance > 0.72 else (1, 1, 1, 1)
-                size = _measure_text(text, color=text_color, font_size=percentage_font_size)
-                _draw_text(
-                    self.canvas,
-                    text,
-                    label_x - size[0] / 2.0,
-                    label_y - size[1] / 2.0,
-                    color=text_color,
-                    font_size=percentage_font_size,
-                )
 
             with self.canvas:
                 Color(*rgba)
                 Ellipse(pos=(self.x + 14, legend_y + 3), size=(10, 10))
             legend_text = f"{segment.get('label', 'Dato')}: {int(value)} ({percentage:.0f}%)"
-            _draw_text(self.canvas, legend_text, self.x + 30, legend_y, color=rgba, font_size=legend_font_size)
-            legend_y -= 22
+            _draw_text(self.canvas, legend_text, self.x + 30, legend_y, color=palette["text"], font_size=legend_font_size)
+            legend_y -= 24
             start_angle += sweep
 
         with self.canvas:
-            Color(1, 1, 1, 1)
+            Color(*palette["plot"])
             inner = pie_diameter * 0.42
             Ellipse(pos=(center_x - inner / 2, center_y - inner / 2), size=(inner, inner))
-        total_size = _measure_text(str(int(total)), font_size=total_font_size)
-        _draw_text(self.canvas, str(int(total)), center_x - total_size[0] / 2.0, center_y - total_size[1] / 2.0, font_size=total_font_size)
+        total_size = _measure_text(str(int(total)), color=palette["text"], font_size=total_font_size)
+        _draw_text(self.canvas, str(int(total)), center_x - total_size[0] / 2.0, center_y - total_size[1] / 2.0, color=palette["text"], font_size=total_font_size)
 
 
 def _format_tick(value: float) -> str:
@@ -709,3 +695,25 @@ def _format_tick(value: float) -> str:
     if abs(value) >= 10:
         return f"{value:.1f}"
     return f"{value:.2f}"
+
+
+def _chart_palette(dark_mode: bool) -> dict:
+    if dark_mode:
+        return {
+            "background": (0.12, 0.13, 0.15, 1.0),
+            "plot": (0.16, 0.17, 0.19, 1.0),
+            "border": (0.28, 0.29, 0.31, 1.0),
+            "axis": (0.72, 0.72, 0.74, 1.0),
+            "grid": (0.24, 0.25, 0.27, 1.0),
+            "tick": (0.70, 0.70, 0.72, 1.0),
+            "text": (0.93, 0.93, 0.94, 1.0),
+        }
+    return {
+        "background": (0.96, 0.96, 0.96, 1.0),
+        "plot": (1.0, 1.0, 1.0, 1.0),
+        "border": (0.82, 0.82, 0.82, 1.0),
+        "axis": (0.74, 0.74, 0.74, 1.0),
+        "grid": (0.90, 0.90, 0.90, 1.0),
+        "tick": (0.62, 0.62, 0.62, 1.0),
+        "text": (0.20, 0.20, 0.20, 1.0),
+    }

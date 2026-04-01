@@ -53,22 +53,19 @@ class ConditionMonitoringScreen(MDScreen):
         self.secondary_selector_box = MDBoxLayout(orientation="vertical", adaptive_height=True, spacing=dp(6))
         self.secondary_add_button = MDRaisedButton(text="+ Secundaria", on_release=self._open_secondary_metric_menu)
         self.secondary_metrics_box = MDBoxLayout(orientation="vertical", adaptive_height=True, spacing=dp(6))
-        self.main_selector_box.add_widget(MDLabel(text="Grafica principal", adaptive_height=True, bold=True))
+        self.main_selector_label = MDLabel(text="Grafica principal", adaptive_height=True, bold=True)
+        self.main_selector_box.add_widget(self.main_selector_label)
         self.main_selector_box.add_widget(self.main_add_button)
         self.main_selector_box.add_widget(self.main_metrics_box)
-        self.secondary_selector_box.add_widget(MDLabel(text="Grafica secundaria", adaptive_height=True, bold=True))
+        self.secondary_selector_label = MDLabel(text="Grafica secundaria", adaptive_height=True, bold=True)
+        self.secondary_selector_box.add_widget(self.secondary_selector_label)
         self.secondary_selector_box.add_widget(self.secondary_add_button)
         self.secondary_selector_box.add_widget(self.secondary_metrics_box)
         self.selector_grid.add_widget(self.main_selector_box)
         self.selector_grid.add_widget(self.secondary_selector_box)
         self.selector_card.body.add_widget(self.selector_grid)
-        self.selector_card.body.add_widget(
-            MDLabel(
-                text="Puedes anadir hasta 4 variables por grafica. Usa el boton + y quita las que no necesites.",
-                adaptive_height=True,
-                theme_text_color="Secondary",
-            )
-        )
+        self.variables_help_label = MDLabel(text="", adaptive_height=True, theme_text_color="Secondary")
+        self.selector_card.body.add_widget(self.variables_help_label)
         self.content.add_widget(self.selector_card)
 
         self.main_chart_card = SectionCard("Variables principales")
@@ -106,7 +103,7 @@ class ConditionMonitoringScreen(MDScreen):
         selected = set(self.app_controller.state.cm_main_metrics if target == "main" else self.app_controller.state.cm_secondary_metrics)
         items = [
             {
-                "text": metric_name,
+                "text": self.app_controller.tr_metric(metric_name),
                 "viewclass": "OneLineListItem",
                 "on_release": lambda name=metric_name, side=target: self._add_metric(side, name),
             }
@@ -114,7 +111,7 @@ class ConditionMonitoringScreen(MDScreen):
             if metric_name not in selected
         ]
         if not items:
-            items = [{"text": "No hay mas variables disponibles", "viewclass": "OneLineListItem", "on_release": lambda: None}]
+            items = [{"text": self.app_controller.tr("cm_no_more_metrics"), "viewclass": "OneLineListItem", "on_release": lambda: None}]
         return MDDropdownMenu(caller=caller, items=items, width_mult=5)
 
     def _add_metric(self, target: str, metric_name: str):
@@ -137,15 +134,15 @@ class ConditionMonitoringScreen(MDScreen):
         container.clear_widgets()
         for metric_name in metrics:
             row = MDBoxLayout(orientation="horizontal", adaptive_height=True, spacing=dp(8))
-            row.add_widget(MDLabel(text=metric_name, adaptive_height=True))
-            row.add_widget(MDFlatButton(text="Quitar", on_release=lambda *_args, side=target, name=metric_name: self._remove_metric(side, name)))
+            row.add_widget(MDLabel(text=self.app_controller.tr_metric(metric_name), adaptive_height=True))
+            row.add_widget(MDFlatButton(text=self.app_controller.tr("cm_remove"), on_release=lambda *_args, side=target, name=metric_name: self._remove_metric(side, name)))
             container.add_widget(row)
 
     def _open_main_chart_fullscreen(self, *_args):
         metrics = list(self.app_controller.state.cm_main_metrics)
         self.app_controller.open_fullscreen_chart(
-            title="Condition Monitoring principal",
-            subtitle=", ".join(metrics),
+            title=self.app_controller.tr("cm_fullscreen_main_title"),
+            subtitle=", ".join(self.app_controller.tr_metric(metric) for metric in metrics),
             series=list(self.main_chart.series),
             x_axis_label=self.main_chart.x_axis_label,
             y_axis_label=self.main_chart.y_axis_label,
@@ -154,14 +151,14 @@ class ConditionMonitoringScreen(MDScreen):
             show_points=self.main_chart.show_points,
             x_tick_labels=list(self.main_chart.x_tick_labels),
             allow_point_deletion=True,
-            footer="Vista completa para inspeccionar varias metricas en paralelo con zoom tactil.",
+            footer=self.app_controller.tr("cm_fullscreen_main_footer"),
         )
 
     def _open_secondary_chart_fullscreen(self, *_args):
         metrics = list(self.app_controller.state.cm_secondary_metrics)
         self.app_controller.open_fullscreen_chart(
-            title="Condition Monitoring secundario",
-            subtitle=", ".join(metrics),
+            title=self.app_controller.tr("cm_fullscreen_secondary_title"),
+            subtitle=", ".join(self.app_controller.tr_metric(metric) for metric in metrics),
             series=list(self.secondary_chart.series),
             x_axis_label=self.secondary_chart.x_axis_label,
             y_axis_label=self.secondary_chart.y_axis_label,
@@ -170,7 +167,7 @@ class ConditionMonitoringScreen(MDScreen):
             show_points=self.secondary_chart.show_points,
             x_tick_labels=list(self.secondary_chart.x_tick_labels),
             allow_point_deletion=True,
-            footer="Vista completa para comparar metricas secundarias con pan y zoom tactil.",
+            footer=self.app_controller.tr("cm_fullscreen_secondary_footer"),
         )
 
     def refresh(self):
@@ -181,6 +178,10 @@ class ConditionMonitoringScreen(MDScreen):
         self.success_filter_button.text = self.app_controller.tr("cm_show_all") if state.cm_success_only else self.app_controller.tr("cm_only_success")
         self.main_add_button.text = self.app_controller.tr("cm_add_main")
         self.secondary_add_button.text = self.app_controller.tr("cm_add_secondary")
+        self.main_selector_label.text = self.app_controller.tr("cm_main_chart")
+        self.secondary_selector_label.text = self.app_controller.tr("cm_secondary_chart")
+        self.variables_help_label.text = self.app_controller.tr("cm_variables_help")
+        self.empty_state.text_widget.text = self.app_controller.tr("cm_empty")
         visible = state.is_multi
         for widget in (self.selector_card, self.main_chart_card, self.secondary_chart_card):
             widget.opacity = 1 if visible else 0
@@ -197,22 +198,22 @@ class ConditionMonitoringScreen(MDScreen):
         filtered_indices = state.condition_monitoring_filtered_indices()
         self.success_filter_button.text = self.app_controller.tr("cm_show_all") if state.cm_success_only else self.app_controller.tr("cm_only_success")
         self.filter_hint.text = (
-            f"Mostrando {len(filtered_indices)} arranques exitosos."
+            self.app_controller.tr("cm_filter_success", count=len(filtered_indices))
             if state.cm_success_only
-            else f"Mostrando {len(filtered_indices)} arranques del dataset."
+            else self.app_controller.tr("cm_filter_multi", count=len(filtered_indices))
         )
 
-        self.main_chart_card.title_label.text = state.cm_title(state.cm_main_metrics, "Variables principales")
-        self.secondary_chart_card.title_label.text = state.cm_title(state.cm_secondary_metrics, "Variables secundarias")
+        self.main_chart_card.title_label.text = state.cm_title([self.app_controller.tr_metric(item) for item in state.cm_main_metrics], self.app_controller.tr("cm_main_chart"))
+        self.secondary_chart_card.title_label.text = state.cm_title([self.app_controller.tr_metric(item) for item in state.cm_secondary_metrics], self.app_controller.tr("cm_secondary_chart"))
         x_axis_label = state.condition_monitoring_x_axis_label()
         x_tick_labels = state.condition_monitoring_x_tick_labels()
         self.main_chart.x_axis_label = x_axis_label
-        self.main_chart.y_axis_label = state.cm_axis_label(state.cm_main_metrics)
+        self.main_chart.y_axis_label = state.cm_axis_label([self.app_controller.tr_metric(item) for item in state.cm_main_metrics])
         self.main_chart.x_tick_labels = x_tick_labels
         self.main_chart.allow_point_deletion = False
         self.main_chart.max_points = max(600, len(filtered_indices) * 3)
         self.secondary_chart.x_axis_label = x_axis_label
-        self.secondary_chart.y_axis_label = state.cm_axis_label(state.cm_secondary_metrics)
+        self.secondary_chart.y_axis_label = state.cm_axis_label([self.app_controller.tr_metric(item) for item in state.cm_secondary_metrics])
         self.secondary_chart.x_tick_labels = x_tick_labels
         self.secondary_chart.allow_point_deletion = False
         self.secondary_chart.max_points = max(600, len(filtered_indices) * 3)
@@ -221,8 +222,9 @@ class ConditionMonitoringScreen(MDScreen):
         main_messages = []
         for index, metric_name in enumerate(state.cm_main_metrics):
             points, omitted = state.condition_monitoring_series(metric_name)
-            main_series.append({"name": metric_name, "color": CM_COLORS[index % len(CM_COLORS)], "points": points})
-            main_messages.append(f"{metric_name}: {omitted} omitidos" if omitted else f"{metric_name}: OK")
+            translated_metric = self.app_controller.tr_metric(metric_name)
+            main_series.append({"name": translated_metric, "color": CM_COLORS[index % len(CM_COLORS)], "points": points})
+            main_messages.append(self.app_controller.tr("cm_warning_omitted", metric=translated_metric, count=omitted) if omitted else self.app_controller.tr("cm_warning_ok", metric=translated_metric))
         self.main_chart.series = main_series
         self.main_warning.text = " | ".join(main_messages)
 
@@ -230,8 +232,9 @@ class ConditionMonitoringScreen(MDScreen):
         secondary_messages = []
         for index, metric_name in enumerate(state.cm_secondary_metrics):
             points, omitted = state.condition_monitoring_series(metric_name)
-            secondary_series.append({"name": metric_name, "color": CM_COLORS[index % len(CM_COLORS)], "points": points})
-            secondary_messages.append(f"{metric_name}: {omitted} omitidos" if omitted else f"{metric_name}: OK")
+            translated_metric = self.app_controller.tr_metric(metric_name)
+            secondary_series.append({"name": translated_metric, "color": CM_COLORS[index % len(CM_COLORS)], "points": points})
+            secondary_messages.append(self.app_controller.tr("cm_warning_omitted", metric=translated_metric, count=omitted) if omitted else self.app_controller.tr("cm_warning_ok", metric=translated_metric))
         self.secondary_chart.series = secondary_series
         self.secondary_warning.text = " | ".join(secondary_messages)
         self._apply_responsive_layout()

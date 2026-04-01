@@ -4,6 +4,7 @@ import os
 
 from kivy.effects.scroll import ScrollEffect
 from kivy.metrics import dp
+from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.image import Image
 from kivy.uix.progressbar import ProgressBar
 from kivy.uix.scrollview import ScrollView
@@ -56,16 +57,21 @@ class ImportScreen(MDScreen):
             ("fr", "lang_fr.png"),
         ):
             box = MDBoxLayout(orientation="vertical", adaptive_height=True, spacing=dp(6))
-            box.add_widget(
+            image_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_y=None, height=dp(40))
+            image_anchor.add_widget(
                 Image(
                     source=os.path.join(assets_root, image_name),
-                    size_hint_y=None,
-                    height=dp(34),
+                    size_hint=(None, None),
+                    size=(dp(34), dp(34)),
                     allow_stretch=True,
                     keep_ratio=True,
                 )
             )
+            box.add_widget(image_anchor)
             button = MDFlatButton(text="", on_release=lambda *_args, lang=code: self.app_controller.set_language(lang))
+            button.size_hint_x = None
+            button.width = dp(110)
+            button.pos_hint = {"center_x": 0.5}
             self.language_buttons[code] = button
             box.add_widget(button)
             language_row.add_widget(box)
@@ -73,6 +79,20 @@ class ImportScreen(MDScreen):
         self.language_card.body.add_widget(language_row)
         self.language_card.body.add_widget(self.language_hint_label)
         self.body.add_widget(self.language_card)
+
+        self.theme_card = SectionCard("Tema")
+        theme_row = MDBoxLayout(orientation="horizontal", adaptive_height=True, spacing=dp(8))
+        self.theme_light_button = MDFlatButton(text="", on_release=lambda *_: self.app_controller.set_dark_mode(False))
+        self.theme_dark_button = MDFlatButton(text="", on_release=lambda *_: self.app_controller.set_dark_mode(True))
+        for button in (self.theme_light_button, self.theme_dark_button):
+            button.size_hint_x = None
+            button.width = dp(120)
+        theme_row.add_widget(self.theme_light_button)
+        theme_row.add_widget(self.theme_dark_button)
+        self.theme_hint_label = MDLabel(text="", adaptive_height=True, theme_text_color="Secondary")
+        self.theme_card.body.add_widget(theme_row)
+        self.theme_card.body.add_widget(self.theme_hint_label)
+        self.body.add_widget(self.theme_card)
 
         self.summary_card = SectionCard("Resumen")
         self.summary_grid = MDGridLayout(cols=2, adaptive_height=True, spacing=dp(10), row_default_height=dp(96), row_force_default=True)
@@ -87,6 +107,15 @@ class ImportScreen(MDScreen):
         self.validation_card.body.add_widget(self.progress_label)
         self.validation_card.body.add_widget(self.progress_bar)
         self.body.add_widget(self.validation_card)
+        self.body.add_widget(
+            Image(
+                source=os.path.join(assets_root, "hyperdrive_app.png"),
+                size_hint_y=None,
+                height=dp(180),
+                allow_stretch=True,
+                keep_ratio=True,
+            )
+        )
 
     def refresh(self):
         state = self.app_controller.state
@@ -101,6 +130,11 @@ class ImportScreen(MDScreen):
         self.language_buttons["fr"].text = self.app_controller.tr("language_fr")
         self.language_hint_label.text = self.app_controller.tr("language_hint")
         self._style_language_buttons()
+        self.theme_card.title_label.text = self.app_controller.tr("theme_card")
+        self.theme_light_button.text = self.app_controller.tr("theme_light")
+        self.theme_dark_button.text = self.app_controller.tr("theme_dark")
+        self.theme_hint_label.text = self.app_controller.tr("theme_hint")
+        self._style_theme_buttons()
 
         self.summary_grid.clear_widgets()
         self.summary_card.title_label.text = self.app_controller.tr("summary_card")
@@ -130,8 +164,18 @@ class ImportScreen(MDScreen):
 
     def _style_language_buttons(self):
         active = self.app_controller.language
+        palette = self.app_controller.palette()
         for code, button in self.language_buttons.items():
             selected = code == active
-            button.md_bg_color = (0.925, 0.431, 0.0, 1.0) if selected else (0.91, 0.91, 0.91, 1.0)
+            button.md_bg_color = (0.925, 0.431, 0.0, 1.0) if selected else palette["inactive_button"]
             button.theme_text_color = "Custom"
-            button.text_color = (1, 1, 1, 1) if selected else (0.25, 0.25, 0.25, 1)
+            button.text_color = (1, 1, 1, 1) if selected else palette["inactive_text"]
+
+    def _style_theme_buttons(self):
+        palette = self.app_controller.palette()
+        selected_key = "dark" if self.app_controller.dark_mode else "light"
+        for key, button in (("light", self.theme_light_button), ("dark", self.theme_dark_button)):
+            selected = key == selected_key
+            button.md_bg_color = (0.925, 0.431, 0.0, 1.0) if selected else palette["inactive_button"]
+            button.theme_text_color = "Custom"
+            button.text_color = (1, 1, 1, 1) if selected else palette["inactive_text"]

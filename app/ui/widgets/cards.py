@@ -18,6 +18,9 @@ class SectionCard(MDCard):
         self.add_widget(self.title_label)
         self.add_widget(self.body)
 
+    def apply_theme(self, palette: dict):
+        self.md_bg_color = palette["panel"]
+
 
 class MetricCard(MDCard):
     def __init__(self, label: str, value: str, **kwargs):
@@ -27,8 +30,13 @@ class MetricCard(MDCard):
         self.minimum_height = dp(96)
         self.elevation = 1
         self.md_bg_color = (0.98, 0.98, 0.98, 1)
-        self.add_widget(MDLabel(text=label, theme_text_color="Secondary", adaptive_height=True))
-        self.add_widget(MDLabel(text=str(value), bold=True, adaptive_height=True))
+        self.label_widget = MDLabel(text=label, theme_text_color="Secondary", adaptive_height=True)
+        self.value_widget = MDLabel(text=str(value), bold=True, adaptive_height=True)
+        self.add_widget(self.label_widget)
+        self.add_widget(self.value_widget)
+
+    def apply_theme(self, palette: dict):
+        self.md_bg_color = palette["panel_soft"]
 
 
 class EmptyState(MDCard):
@@ -37,4 +45,8 @@ class EmptyState(MDCard):
         self.size_hint_y = None
         self.adaptive_height = True
         self.md_bg_color = (0.97, 0.97, 0.97, 1)
-        self.add_widget(MDLabel(text=text, halign="center", theme_text_color="Secondary", adaptive_height=True))
+        self.text_widget = MDLabel(text=text, halign="center", theme_text_color="Secondary", adaptive_height=True)
+        self.add_widget(self.text_widget)
+
+    def apply_theme(self, palette: dict):
+        self.md_bg_color = palette["panel_muted"]
